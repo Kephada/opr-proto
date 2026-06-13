@@ -20,22 +20,14 @@ html{overflow:hidden}
    manual scale always MULTIPLIES the desktop auto-scale - bigger never reads
    as smaller. calc() in zoom is Chromium-supported (our Steam/PWA target). */
 body{--ui-auto:1;margin:0;min-height:100vh;background:#06070a;color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;-webkit-font-smoothing:antialiased;zoom:calc(var(--ui-auto) * var(--ui-mult, 1))}
-/* ---- Auto scale: the UI is built at phone size (fixed px, <=560px column),
-   which reads tiny in a roomy window. Zoom the whole vector UI up by viewport.
-   Two regimes, because the layout itself switches at 900px:
-   - 680-899px: still the scrolling COLUMN, so gate width AND height (it can
-     overflow vertically; content is ~564px tall at zoom 1).
-   - >=900px: the full-bleed corridor - everything floats over the arena with
-     overflow:hidden, so it can't overflow vertically; width drives the scale
-     and a light height floor just keeps the bottom HUD off the sprite.
-   Applies only at the DEFAULT UI-scale setting (inline zoom empty); an explicit
-   Options scale sets inline zoom and overrides these. Media queries read the
-   real viewport, not the zoomed box, so there is no feedback loop. ---- */
+/* ---- Auto scale applies ONLY to the 680-899px COLUMN layout (fixed-px, so a
+   uniform body zoom is exactly right). The >=900px DESKTOP layout sizes itself
+   with vw units already; body-zooming it would DOUBLE-scale (vw picks the big
+   size for the real viewport, then zoom multiplies again) and the bottom HUD
+   panels overlap. So desktop is sized by its own vw rules below, never zoom.
+   Manual Options scale still multiplies via --ui-mult on body. ---- */
 @media (min-width:680px) and (max-width:899px) and (min-height:700px){body{--ui-auto:1.2}}
 @media (min-width:820px) and (max-width:899px) and (min-height:840px){body{--ui-auto:1.32}}
-@media (min-width:900px) and (min-height:600px){body{--ui-auto:1.3}}
-@media (min-width:1150px) and (min-height:680px){body{--ui-auto:1.45}}
-@media (min-width:1500px) and (min-height:840px){body{--ui-auto:1.6}}
 button{font:inherit}
 #game{position:fixed;inset:0;overflow:hidden;background:linear-gradient(#0a0c10,#06070a 60%,#030304);display:flex;justify-content:center}
 #game[hidden]{display:none}
@@ -433,7 +425,7 @@ button{font:inherit}
 /* snd/fast chips parked for now - audio defaults on, fast lives in code */
 .togs{display:none}
 @media (min-width:900px){
-  .combat{max-width:none;padding:0;overflow:hidden;gap:0;--logw:clamp(150px, calc(21vw - 28px), 304px)}
+  .combat{max-width:none;padding:0;overflow:hidden;gap:0;--logw:clamp(170px, calc(22vw - 24px), 344px)}
   .hud-top{position:absolute;top:10px;left:16px;right:16px;z-index:10;min-height:0}
   .brand,.sub{text-shadow:0 1px 4px #000}
   .monster{position:absolute;inset:0;margin:0;min-height:0;z-index:1}
@@ -449,7 +441,7 @@ button{font:inherit}
   /* damage counter crowns the stack - and only exists once damage lands */
   .score-overlay{bottom:min(calc(var(--head, 62%) + 36px), calc(100% - 76px));transition:opacity .25s}
   .score-overlay.idle{opacity:0}
-  .total{font-size:56px}
+  .total{font-size:66px}
   .hp-badge{top:50px;right:16px}
   .mod-badge{top:94px;right:16px}
   /* status row floats just above the hp bar, centered on the foe */
@@ -505,9 +497,9 @@ button{font:inherit}
      shelf, satchel behind VIEW DICE. Wager + View Dice are ANCHORED as a
      compact stack at the shelf's right shoulder - nothing floats bare. */
   /* bottom rides up with the window so an overlapping taskbar can't eat it */
-  .player-hud{position:absolute;left:50%;bottom:max(16px, 3vh);transform:translateX(-50%);width:min(760px,58vw);z-index:10;background:none;border:none;box-shadow:none;padding:0;gap:5px;user-select:none}
+  .player-hud{position:absolute;left:50%;bottom:max(16px, 3vh);transform:translateX(-50%);width:min(820px,54vw);z-index:10;background:none;border:none;box-shadow:none;padding:0;gap:5px;user-select:none}
   .roll-row{position:relative;justify-content:center;align-items:center;gap:10px}
-  .roll-row .attack{flex:0 1 clamp(300px, 28vw, 460px)}
+  .roll-row .attack{flex:0 1 clamp(320px, 30vw, 500px)}
   .wager-chip{position:absolute;right:0;bottom:42px;min-width:118px;height:30px;background:rgba(13,11,9,.92);border:1px solid #2c251d}
   .view-dice{display:block;position:absolute;right:0;bottom:4px;width:118px;height:32px;border:none;cursor:pointer;background:url('../assets/view-dice-btn.png') center/contain no-repeat;filter:brightness(.92)}
   .view-dice:hover{filter:brightness(1.15)}
@@ -518,7 +510,8 @@ button{font:inherit}
   .player-hud.satchel-open .char-row{display:flex}
   /* Painted die sockets (cropped from the tray strip - 5 baked sockets
      can't align with 6 slots, so one socket tiles per slot). */
-  .dice-slot{height:104px;background:url('../assets/die-socket.png') center/100% 100% no-repeat;border:none;border-radius:0}
+  .dice-slot{height:120px;background:url('../assets/die-socket.png') center/100% 100% no-repeat;border:none;border-radius:0}
+  .dice-slot .die{width:60px;height:60px}
   .dice-slot.empty{border:none;background:url('../assets/die-socket.png') center/100% 100% no-repeat;opacity:.8}
   .dice-slot.empty.locked{border:none;opacity:.55}
   .dice-slot.rolled,.dice-slot.locked{border:none}
