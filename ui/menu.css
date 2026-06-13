@@ -9,7 +9,12 @@
 .screen{position:fixed;inset:0;z-index:40;display:flex;justify-content:center;overflow-y:auto;padding:16px 0;background:radial-gradient(120% 90% at 50% 32%,rgba(8,7,10,.9),rgba(3,3,5,.985) 78%);animation:screenIn .35s ease-out}
 .screen[hidden]{display:none}
 @keyframes screenIn{from{opacity:0}to{opacity:1}}
-.screen-card{display:flex;flex-direction:column;align-items:center;margin:auto;padding:26px 22px;width:min(92vw,460px);text-align:center}
+/* The menu is just buttons - it must FIT, not inherit combat's big desktop
+   auto-zoom (which made the tall card spill below the fold). Counter-scale by
+   1/--ui-auto so the card renders at the user's manual scale (1x by default),
+   independent of the viewport auto-zoom that combat needs. Phone (--ui-auto 1)
+   is unchanged. Scrim (.screen) stays full-bleed; only the card is rescaled. */
+.screen-card{display:flex;flex-direction:column;align-items:center;margin:auto;padding:26px 22px;width:min(92vw,460px);text-align:center;zoom:calc(1 / var(--ui-auto, 1))}
 
 /* ---- Main menu ---- */
 .m-title{font-family:var(--display);font-weight:900;font-size:clamp(36px,6vw,58px);line-height:1.05;letter-spacing:.05em;color:#e8d9b0;text-shadow:0 3px 12px #000,0 0 38px rgba(228,170,90,.22);margin:0}

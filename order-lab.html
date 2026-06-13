@@ -1,0 +1,256 @@
+<!--
+ORDER LAB — a throwaway design probe (NOT the game engine). Tests one question:
+is ordering dice a PUZZLE or a LUCK-FIESTA, and is ordering BEFORE the roll
+(commit blind, watch) more fun/faster than AFTER (see faces, then arrange)?
+
+Six dice with real identities + auto-abilities, three enemies with one-sentence
+EVENT-KEYED rules (they trigger on what your arrangement causes, not on absolute
+positions — so blind ordering is arranging the CAUSE). Tap two dice to swap.
+Self-contained: open order-lab.html, no build, no deps.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Order Lab · One Punch Run</title>
+<link rel="icon" href="data:,">
+<meta name="theme-color" content="#06070a">
+<style>
+  :root{--bg:#06070a;--card:#121013;--line:rgba(200,185,160,.14);--text:#e9dfc8;--muted:#9d937d;--faint:#675f50;
+    --gold:#e8c455;--good:#76d079;--bad:#d8453a;--mono:'SFMono-Regular',Consolas,monospace;--disp:Georgia,serif;
+    --fire:#ff7b66;--venom:#58c783;--storm:#6db3f2;--stone:#aeb8c2;--coin:#f0d06a;}
+  *{box-sizing:border-box}
+  html{overflow-x:hidden}
+  body{margin:0;min-height:100vh;background:radial-gradient(120% 90% at 50% 18%,#0c0e13,#040506 75%);
+    color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;display:flex;justify-content:center;overflow-y:auto}
+  .wrap{width:100%;max-width:520px;margin:auto;padding:16px 14px calc(20px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:12px}
+  h1{font-family:var(--disp);font-weight:900;font-size:20px;letter-spacing:.04em;margin:0;text-align:center}
+  .sub{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);text-align:center;margin:-6px 0 2px}
+  /* mode toggle */
+  .seg{display:flex;gap:6px;justify-content:center}
+  .seg button{flex:1;min-height:46px;border:1px solid var(--line);border-radius:3px;background:rgba(12,11,13,.9);
+    color:var(--muted);font-family:var(--mono);font-weight:900;font-size:12px;letter-spacing:.06em;cursor:pointer}
+  .seg button.on{color:var(--gold);border-color:#5a4124;box-shadow:inset 0 0 12px rgba(228,170,90,.18)}
+  .mode-note{font-size:12px;line-height:1.4;color:var(--muted);text-align:center;min-height:34px}
+  .mode-note b{color:var(--text)}
+  /* enemy */
+  .enemy{border:1px solid var(--line);border-radius:4px;background:linear-gradient(180deg,rgba(24,20,17,.9),rgba(10,8,7,.92));padding:11px 13px}
+  .enemy .row{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+  .enemy .name{font-family:var(--disp);font-weight:700;font-size:16px}
+  .enemy .hp{font-family:var(--mono);font-weight:900;color:var(--bad);font-size:13px;white-space:nowrap}
+  .enemy .rule{font-size:13px;line-height:1.4;color:var(--gold);margin-top:5px}
+  .enemy .rule b{color:#ffe9a8}
+  /* lane */
+  .lane{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+  .die{position:relative;aspect-ratio:1;border-radius:5px;border:1px solid var(--line);background:radial-gradient(120% 100% at 34% 18%,#3a3730,#14110b 78%);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;user-select:none;padding:2px;transition:transform .1s,box-shadow .1s,border-color .1s}
+  .die:active{transform:scale(.96)}
+  .die.sel{border-color:var(--gold);box-shadow:0 0 0 2px rgba(232,196,85,.5),0 0 14px rgba(232,196,85,.35)}
+  .die.crit{box-shadow:0 0 0 2px rgba(255,180,70,.7),0 0 16px rgba(255,150,60,.5)}
+  .die .glyph{font-size:17px;line-height:1}
+  .die .face{font-family:var(--mono);font-weight:900;font-size:20px;line-height:1;color:#fff;text-shadow:0 1px 3px #000}
+  .die .nm{position:absolute;bottom:1px;left:0;right:0;text-align:center;font-family:var(--mono);font-size:7px;letter-spacing:.02em;color:var(--muted);text-transform:uppercase;white-space:nowrap;overflow:hidden}
+  .die .tag{position:absolute;top:1px;right:3px;font-family:var(--mono);font-size:7px;color:var(--faint)}
+  .die.el-fire{--el:var(--fire)} .die.el-venom{--el:var(--venom)} .die.el-storm{--el:var(--storm)}
+  .die.el-stone{--el:var(--stone)} .die.el-coin{--el:var(--coin)}
+  .die .glyph,.die.el-fire .glyph{color:var(--el,#ead9b3);filter:drop-shadow(0 0 5px var(--el))}
+  .order-pips{display:flex;justify-content:center;gap:5px;font-family:var(--mono);font-size:9px;color:var(--faint);letter-spacing:.3em}
+  .hint{font-size:11px;color:var(--faint);text-align:center;font-style:italic;min-height:14px}
+  /* action + result */
+  .act{min-height:54px;border:1px solid #0a0604;border-radius:3px;cursor:pointer;text-transform:uppercase;font-weight:900;
+    letter-spacing:.14em;font-family:var(--disp);font-size:18px;color:#ffe9c9;background:linear-gradient(180deg,#b8453a,#7e261c 52%,#54160f);
+    box-shadow:inset 0 1px 0 rgba(255,220,180,.3),0 4px 0 #240705}
+  .act:active{transform:translateY(2px);box-shadow:inset 0 1px 0 rgba(255,220,180,.3),0 2px 0 #240705}
+  .act:disabled{filter:grayscale(.6) brightness(.6);cursor:default}
+  .act.go{background:linear-gradient(180deg,#3a7a45,#1f4a28 52%,#123018);box-shadow:inset 0 1px 0 rgba(180,255,190,.25),0 4px 0 #08160c}
+  .result{text-align:center;min-height:42px}
+  .result .verdict{font-family:var(--disp);font-weight:900;font-size:22px;letter-spacing:.08em}
+  .result .verdict.win{color:var(--good)} .result .verdict.lose{color:var(--bad)}
+  .result .why{font-size:12px;color:var(--muted);line-height:1.4;margin-top:2px}
+  .clock{font-family:var(--mono);font-size:11px;color:var(--faint);text-align:center;letter-spacing:.04em}
+  .clock b{color:var(--text)}
+  .log{font-family:var(--mono);font-size:10.5px;line-height:1.5;color:var(--muted);border-top:1px solid var(--line);padding-top:8px;max-height:150px;overflow-y:auto}
+  .log .t{color:var(--text)} .log .pos{color:var(--good)} .log .neg{color:var(--bad)}
+  .foot{display:flex;gap:8px}
+  .foot button{flex:1;min-height:42px;border:1px solid var(--line);border-radius:3px;background:rgba(12,11,13,.9);color:var(--muted);font-family:var(--mono);font-weight:900;font-size:11px;letter-spacing:.08em;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Order Lab</h1>
+  <div class="sub">does ordering = a puzzle, or a luck-fiesta?</div>
+
+  <div class="seg" id="seg">
+    <button data-mode="pre" class="on">Order BEFORE roll</button>
+    <button data-mode="post">Order AFTER roll</button>
+  </div>
+  <div class="mode-note" id="modeNote"></div>
+
+  <div class="enemy">
+    <div class="row"><span class="name" id="enName"></span><span class="hp" id="enHp"></span></div>
+    <div class="rule" id="enRule"></div>
+  </div>
+
+  <div class="order-pips">◀ tap two dice to swap ▶</div>
+  <div class="lane" id="lane"></div>
+  <div class="hint" id="hint"></div>
+
+  <button class="act" id="act"></button>
+  <div class="result" id="result"></div>
+  <div class="clock" id="clock"></div>
+  <div class="log" id="log"></div>
+  <div class="foot">
+    <button id="newEnemy">New enemy</button>
+    <button id="retry">Retry (same)</button>
+  </div>
+</div>
+
+<script type="module">
+const $ = id => document.getElementById(id);
+const rnd = n => 1 + Math.floor(Math.random() * n);
+
+// ---- The hand: six dice with real identities + ONE auto-ability each -------
+const GLYPH = { fire:'🔥', venom:'☠', storm:'🜁', stone:'⬣', coin:'⬠' };
+const HAND = [
+  { name:'Galecaller', el:'storm', size:12, ability:'charges next +2' },
+  { name:'Doubler',    el:'fire',  size:8,  ability:'doubles a 6' },
+  { name:'Fang',       el:'venom', size:6,  ability:'odd → +3 poison' },
+  { name:'Gilded',     el:'coin',  size:4,  ability:'beats prev → +2g dmg' },
+  { name:'Bulwark',    el:'stone', size:6,  ability:'floor 3, +1 both sides' },
+  { name:'Ember',      el:'fire',  size:4,  ability:'4 → explodes' },
+];
+
+// ---- Enemies: one sentence, EVENT-KEYED (triggers on what your order causes)
+const ENEMIES = [
+  { name:'The Braced Knight', target:20,
+    rule:'<b>Braced</b> — armored 3 until a <b>CRIT</b> lands, then exposed.',
+    init:s=>{s.broken=false;},
+    tick:(s,h,d)=>{ if(s.broken) return h; if(d.crit){s.broken=true; d.note='crit BREAKS the guard'; return h;} const a=Math.max(0,h-3); if(h)d.note=`armor eats ${h-a}`; return a; } },
+  { name:'The Splitting Ooze', target:16,
+    rule:'<b>Splits</b> — halves any hit <b>bigger</b> than the hit before it.',
+    init:s=>{s.prev=null;},
+    tick:(s,h,d)=>{ let o=h; if(s.prev!=null && h>s.prev){o=Math.floor(h/2); d.note=`split ${h}→${o}`;} s.prev=o; return o; } },
+  { name:'The Re-forming Bones', target:14,
+    rule:'<b>Re-forms</b> — heals 2 on each of your <b>1s</b>.',
+    init:s=>{s.heal=0;},
+    tick:(s,h,d)=>{ if(d.base===1){s.heal+=2; d.note='a 1 — it heals 2';} return h; },
+    end:(s,total)=> total - s.heal },
+];
+
+let mode = 'pre';          // 'pre' | 'post'
+let phase = 'arrange';     // pre: arrange→done ; post: idle→rolled→done
+let order = [0,1,2,3,4,5]; // indices into HAND, current lane order
+let faces = null;          // rolled faces, parallel to HAND (by die index)
+let enemy = ENEMIES[0];
+let sel = -1;              // selected die slot for swap
+let t0 = 0;                // encounter start time
+const times = { pre:[], post:[] };
+
+const MODE_NOTE = {
+  pre:'You arrange <b>blind</b>, then ROLL and watch it resolve. The puzzle is your dice’ <b>identities</b> vs the rule — the surprise is the roll.',
+  post:'You ROLL first, <b>see every face</b>, then arrange and RESOLVE. A pure solve — but you do it every fight. Feel the clock.',
+};
+
+function newEnemy(){ enemy = ENEMIES[(ENEMIES.indexOf(enemy)+1) % ENEMIES.length]; reset(); }
+function reset(){
+  order = [0,1,2,3,4,5]; faces = null; sel = -1;
+  phase = mode === 'pre' ? 'arrange' : 'idle';
+  $('result').innerHTML=''; $('log').innerHTML='';
+  t0 = performance.now();
+  render();
+}
+
+function setMode(m){ mode=m; for(const b of $('seg').children) b.classList.toggle('on', b.dataset.mode===m); $('modeNote').innerHTML=MODE_NOTE[m]; reset(); }
+
+function rollFaces(){
+  faces = HAND.map(d => { let f = rnd(d.size); if(d.name==='Bulwark') f=Math.max(3,f); return f; });
+}
+
+// ---- The cascade: left→right, charges, abilities, enemy rule per tick -------
+function resolve(){
+  const seq = order.map(i => ({ i, d:HAND[i], base:faces[i] }));
+  const charge = seq.map(()=>0);
+  seq.forEach((r,pos)=>{ // charge pass (sequence-relative)
+    if(r.d.name==='Galecaller' && seq[pos+1]) charge[pos+1]+=2;
+    if(r.d.name==='Bulwark'){ if(seq[pos-1])charge[pos-1]+=1; if(seq[pos+1])charge[pos+1]+=1; }
+  });
+  const s={}; enemy.init(s);
+  let total=0, prevShown=-1; const log=[];
+  seq.forEach((r,pos)=>{
+    const shown=r.base+charge[pos];
+    const crit = shown>=r.d.size;
+    let hit=shown, bonus=[];
+    if(r.d.name==='Doubler' && r.base===6){ hit*=2; bonus.push('×2 on a 6'); }
+    if(r.d.name==='Gilded' && pos>0 && shown>prevShown){ hit+=2; bonus.push('+2 ascending'); }
+    if(r.d.name==='Ember' && r.base===4){ const e=rnd(4); hit+=e; bonus.push(`explodes +${e}`); }
+    const dd={base:r.base,crit,note:''};
+    hit=enemy.tick(s,hit,dd);
+    if(r.d.name==='Fang' && r.base%2===1){ s.poison=(s.poison||0)+3; bonus.push('+3 poison'); }
+    total+=hit; prevShown=shown;
+    log.push(`<div><span class="t">${pos+1} ${r.d.name}</span> shows ${shown}${crit?' ⚡crit':''} → <b>${hit}</b>${bonus.length?` · ${bonus.join(', ')}`:''}${dd.note?` · <span class="${dd.note.includes('heal')||dd.note.includes('armor')||dd.note.includes('split')?'neg':'pos'}">${dd.note}</span>`:''}</div>`);
+  });
+  if(s.poison){ total+=s.poison; log.push(`<div><span class="t">poison</span> +${s.poison}</div>`); }
+  if(enemy.end) total=enemy.end(s,total);
+  return { total:Math.max(0,total), cleared:Math.max(0,total)>=enemy.target, log };
+}
+
+function commit(){
+  const r=resolve();
+  const dt=((performance.now()-t0)/1000);
+  times[mode].push(dt);
+  const med = arr => arr.length? [...arr].sort((a,b)=>a-b)[Math.floor(arr.length/2)] : 0;
+  $('result').innerHTML = `<div class="verdict ${r.cleared?'win':'lose'}">${r.cleared?'SLAIN':'SHORT'}</div>`+
+    `<div class="why">${r.total} vs ${enemy.target} target — ${r.cleared?'cleared':'order didn’t crack it'}. Try a different order or enemy.</div>`;
+  $('clock').innerHTML = `this fight <b>${dt.toFixed(1)}s</b> · median ${mode==='pre'?'BEFORE':'AFTER'} <b>${med(times[mode]).toFixed(1)}s</b> (n=${times[mode].length})`;
+  $('log').innerHTML = r.log.join('');
+  phase='done'; render();
+}
+
+function tapDie(slot){
+  if(phase==='done') return;
+  if(mode==='post' && phase==='idle') return; // must roll first
+  if(sel<0){ sel=slot; }
+  else if(sel===slot){ sel=-1; }
+  else { const t=order[sel]; order[sel]=order[slot]; order[slot]=t; sel=-1; }
+  render();
+}
+
+function render(){
+  // lane
+  const lane=$('lane'); lane.innerHTML='';
+  order.forEach((di,slot)=>{
+    const d=HAND[di]; const showFace = faces!=null;
+    const el=document.createElement('div');
+    el.className=`die el-${d.el}${sel===slot?' sel':''}`;
+    const face = showFace ? `<span class="face">${faces[di]}</span>` : `<span class="glyph">${GLYPH[d.el]}</span>`;
+    el.innerHTML=`<span class="tag">d${d.size}</span>${face}<span class="nm">${d.name}</span>`;
+    el.onclick=()=>tapDie(slot);
+    lane.appendChild(el);
+  });
+  // enemy
+  $('enName').textContent=enemy.name; $('enHp').textContent=`${enemy.target} HP`; $('enRule').innerHTML=enemy.rule;
+  // action button + hint
+  const act=$('act');
+  if(mode==='pre'){
+    if(phase==='arrange'){ act.textContent='ROLL'; act.className='act'; act.disabled=false; act.onclick=()=>{ rollFaces(); render(); commit(); };
+      $('hint').textContent='Arrange by what your dice DO, then roll blind.'; }
+    else { act.textContent='Next'; act.className='act go'; act.disabled=false; act.onclick=reset; $('hint').textContent=''; }
+  } else {
+    if(phase==='idle'){ act.textContent='ROLL'; act.className='act'; act.disabled=false; act.onclick=()=>{ rollFaces(); phase='rolled'; render(); };
+      $('hint').textContent='Roll first — then arrange the faces you got.'; }
+    else if(phase==='rolled'){ act.textContent='RESOLVE'; act.className='act go'; act.disabled=false; act.onclick=commit;
+      $('hint').textContent='Now drag the known faces into the best order.'; }
+    else { act.textContent='Next'; act.className='act go'; act.disabled=false; act.onclick=reset; $('hint').textContent=''; }
+  }
+}
+
+// wire up
+for(const b of $('seg').children) b.onclick=()=>setMode(b.dataset.mode);
+$('newEnemy').onclick=newEnemy;
+$('retry').onclick=reset;
+$('modeNote').innerHTML=MODE_NOTE.pre;
+reset();
+</script>
+</body>
+</html>
