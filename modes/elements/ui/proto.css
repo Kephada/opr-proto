@@ -1,0 +1,14 @@
+/* mode-specific overrides on top of the base ui css */
+/* PATH 1 — ELEMENTS: paint + immune status icons, reaction keywords. */
+
+/* The paint splat and the immune ring tint to their element. */
+.debuff.paint.el-fire, .debuff.immune.el-fire { border: 1px solid #8a3b32; color: #ff7b66; }
+.debuff.paint.el-venom, .debuff.immune.el-venom { border: 1px solid #2f7a4d; color: #58c783; }
+.debuff.paint.el-storm, .debuff.immune.el-storm { border: 1px solid #3c6ea5; color: #6db3f2; }
+.debuff.paint.el-stone, .debuff.immune.el-stone { border: 1px solid #70757c; color: #aeb8c2; }
+.debuff.paint.el-coin, .debuff.immune.el-coin { border: 1px solid #8a6f2a; color: #e8c455; }
+.debuff.immune { opacity: .92; }
+
+/* Reaction + paint keywords in tooltips and rules text. */
+.kw-react { color: #f0a35e; }
+.kw-paint { color: #9fd6e8; }

@@ -1,0 +1,18 @@
+{
+  "name": "One Punch Run",
+  "short_name": "OnePunch",
+  "description": "Arrange your dice. One tap. Watch the line fire.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#06070a",
+  "theme_color": "#06070a",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

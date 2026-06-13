@@ -1,0 +1,537 @@
+/* Cursed Parlor visual system (docs/ART-DIRECTION.md).
+   Layout law: the arena is the stage and flexes to dominate; numbers overlay
+   the fiction; chrome timeshares one status line; corners <=4px. */
+:root{
+  --text:#e9dfc8;--muted:#9d937d;--faint:#675f50;--panel:#121013;--panel2:#0c0b0d;
+  --line:rgba(200,185,160,.09);--gold:#caa64e;--good:#76d079;--bad:#c14b3c;--venom:#58c783;
+  --arc:#65d4c8;--bone:#d4c39e;--ink:#050608;
+  --iron:#322a21;--iron-hi:#4a3f30;--blood:#8c2a21;--ember:#c96b3a;
+  --mono:'SFMono-Regular',Consolas,monospace;
+  --display:'Cinzel',Georgia,serif;
+}
+*{box-sizing:border-box}
+/* The play surface is fixed-position (#game / .screen cover the viewport) and
+   scrolls INTERNALLY (.combat), so the document itself must never scroll. This
+   also absorbs the body's min-height:100vh once desktop zoom (below) scales it
+   past the viewport - without it the page gains a phantom vertical scrollbar. */
+html{overflow:hidden}
+/* Final zoom = auto baseline (set by the viewport media queries below) x the
+   user's manual nudge (--ui-mult, set by the Options scale control). So the
+   manual scale always MULTIPLIES the desktop auto-scale - bigger never reads
+   as smaller. calc() in zoom is Chromium-supported (our Steam/PWA target). */
+body{--ui-auto:1;margin:0;min-height:100vh;background:#06070a;color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;-webkit-font-smoothing:antialiased;zoom:calc(var(--ui-auto) * var(--ui-mult, 1))}
+/* ---- Auto scale: the UI is built at phone size (fixed px, <=560px column),
+   which reads tiny in a roomy window. Zoom the whole vector UI up by viewport.
+   Two regimes, because the layout itself switches at 900px:
+   - 680-899px: still the scrolling COLUMN, so gate width AND height (it can
+     overflow vertically; content is ~564px tall at zoom 1).
+   - >=900px: the full-bleed corridor - everything floats over the arena with
+     overflow:hidden, so it can't overflow vertically; width drives the scale
+     and a light height floor just keeps the bottom HUD off the sprite.
+   Applies only at the DEFAULT UI-scale setting (inline zoom empty); an explicit
+   Options scale sets inline zoom and overrides these. Media queries read the
+   real viewport, not the zoomed box, so there is no feedback loop. ---- */
+@media (min-width:680px) and (max-width:899px) and (min-height:700px){body{--ui-auto:1.2}}
+@media (min-width:820px) and (max-width:899px) and (min-height:840px){body{--ui-auto:1.32}}
+@media (min-width:900px) and (min-height:600px){body{--ui-auto:1.3}}
+@media (min-width:1150px) and (min-height:680px){body{--ui-auto:1.45}}
+@media (min-width:1500px) and (min-height:840px){body{--ui-auto:1.6}}
+button{font:inherit}
+#game{position:fixed;inset:0;overflow:hidden;background:linear-gradient(#0a0c10,#06070a 60%,#030304);display:flex;justify-content:center}
+#game[hidden]{display:none}
+#game::after{content:"";position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 110px 30px rgba(0,0,0,.7);z-index:1}
+/* overflow-y:auto: on short windows the HUD must scroll into reach, never clip. */
+.combat{position:relative;z-index:2;width:100%;max-width:560px;height:100%;display:flex;flex-direction:column;gap:6px;padding:max(8px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));overflow-y:auto;scrollbar-width:none}
+.combat::-webkit-scrollbar{display:none}
+
+/* ---- Header: brand · ladder pips · resources. Glance-only zone. ---- */
+.hud-top{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:40px}
+.brand-stack{min-width:0}
+.brand{font-family:var(--display);font-weight:900;font-size:14px;letter-spacing:.04em;color:#f5ecd8;white-space:nowrap}
+.sub{font-family:var(--mono);font-size:8px;text-transform:uppercase;letter-spacing:.12em;color:var(--faint);white-space:nowrap}
+.ladder{display:flex;gap:7px;align-items:center;flex:1;justify-content:center}
+.pip-rung{width:8px;height:8px;border-radius:50%;background:#1b1815;border:1px solid rgba(200,185,160,.18)}
+.pip-rung.done{background:#3c4434;border-color:rgba(118,208,121,.3)}
+.pip-rung.current{background:var(--ember);border-color:#5d3014;box-shadow:0 0 8px rgba(201,107,58,.6);animation:armedPulse 1.6s ease-in-out infinite}
+.pip-rung.boss{border-color:rgba(193,75,60,.8);width:9px;height:9px}
+.pip-rung.boss.current{background:var(--bad)}
+.togs{display:flex;gap:6px}
+.tog{position:relative;display:flex;align-items:center;padding:3px 9px;border:1px solid #2c251d;border-radius:2px;background:#0e0c0d;color:var(--faint);text-transform:uppercase;letter-spacing:.1em;font-family:var(--mono);font-size:9px;cursor:pointer;user-select:none}
+.tog input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer}
+.tog:has(input:checked){color:#cdbf9f;border-color:#4a3f30;box-shadow:inset 0 0 8px rgba(201,107,58,.18)}
+/* The character's resources live in the character HUD, not on the monster. */
+.plaque{display:flex;align-items:center;min-height:30px;padding:2px 10px;background:linear-gradient(180deg,rgba(24,20,17,.95),rgba(10,8,7,.95));border:1px solid #3a3128;box-shadow:inset 0 1px 0 rgba(220,200,170,.08),0 2px 6px rgba(0,0,0,.6);border-radius:2px;font-family:var(--mono);font-weight:900;letter-spacing:.04em}
+.plaque.hearts{font-size:17px;color:#d8413a;text-shadow:0 0 7px rgba(193,75,60,.55)}
+.plaque.hearts i{font-style:normal;color:#3a2522;text-shadow:none}
+.plaque.gold{font-size:14px;color:#e4bf63;text-shadow:0 0 6px rgba(202,166,78,.4)}
+.plaque.gold::before{content:"";width:10px;height:10px;margin-right:6px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#f4d98a,#9a7426 75%);box-shadow:0 1px 2px #000}
+
+/* ---- Arena: the stage. Full-bleed, flexes to eat all spare height. ---- */
+.monster{position:relative;flex:1;min-height:264px;margin:0 -10px;display:flex;flex-direction:column}
+.monster.shake{animation:shake .35s}
+.monster-stage{position:relative;flex:1;overflow:hidden;background:#07080b;border-top:1px solid rgba(212,195,158,.12);border-bottom:1px solid rgba(212,195,158,.08)}
+.hits{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:4}
+.dmg{position:absolute;bottom:30%;font-family:var(--mono);font-weight:900;font-size:19px;text-shadow:0 1px 3px #000;animation:dmgfloat .9s ease-out forwards}
+.dmg.big{font-size:27px}
+.dmg.echo{font-size:14px;font-style:italic}
+.dmg.el-stone{color:#9aa6b2}.dmg.el-venom{color:var(--venom)}.dmg.el-fire{color:#e4574a}
+.dmg.el-wind{color:var(--arc)}.dmg.el-storm{color:#6db3f2}.dmg.el-crystal{color:#db93f0}
+.dmg.el-coin{color:#e8c455}
+.dmg.small{font-size:13px;bottom:38%;opacity:.9}
+/* The thrown die: certainty in flight toward the Unnamed. */
+.fly-die{position:fixed;z-index:50;width:26px;height:26px;margin:0;border-radius:3px;pointer-events:none;background:radial-gradient(120% 100% at 34% 18%,#4a443a,#15110c 76%);box-shadow:inset 0 1px 1px rgba(255,255,255,.2),inset 0 -3px 5px rgba(0,0,0,.6),0 2px 6px rgba(0,0,0,.55),0 0 10px -2px var(--el,transparent);display:grid;padding:4px}
+.fly-die .pip{width:4px;height:4px;box-shadow:none}
+.fly-die.el-stone{--el:#aeb8c2}.fly-die.el-venom{--el:#58c783}.fly-die.el-fire{--el:#ff7b66}
+.fly-die.el-wind{--el:#65d4c8}.fly-die.el-storm{--el:#f0d06a}.fly-die.el-crystal{--el:#db93f0}
+/* The monster wears its statuses - WoW target-frame style: square icon,
+   type-colored border, stack count, and a PULSE every time one ticks. */
+.debuffs{position:absolute;left:8px;top:8px;display:flex;gap:6px;z-index:7}
+.debuff{position:relative;width:24px;height:24px;border-radius:3px;display:grid;place-items:center;background:rgba(8,7,9,.94);box-shadow:inset 0 0 0 1px #000,0 2px 6px rgba(0,0,0,.55)}
+.debuff svg{width:15px;height:15px;filter:drop-shadow(0 0 4px currentColor)}
+.debuff b{position:absolute;right:-4px;bottom:-5px;font-family:var(--mono);font-size:10px;font-weight:900;color:#fff;text-shadow:0 1px 2px #000,0 0 4px #000}
+.debuff.poison{border:1px solid #2f7a4d;color:#58c783}
+.debuff.armor{border:1px solid #70757c;color:#aeb8c2}
+.debuff.ward{border:1px solid #3c6ea5;color:#6db3f2}
+.debuff.tickflash{animation:debuffTick .45s ease-out}
+@keyframes debuffTick{25%{transform:scale(1.4);box-shadow:0 0 14px currentColor,inset 0 0 0 1px currentColor}}
+.monster-plate{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-between;align-items:flex-end;gap:8px;padding:18px 10px 5px;background:linear-gradient(180deg,transparent,rgba(0,0,0,.88));font-family:Georgia,serif;z-index:5}
+.plate-left{display:flex;flex-direction:column;min-width:0}
+#roomname{font-family:var(--display);font-size:15px;font-weight:700;letter-spacing:.03em}.mon-lvl{font-family:var(--mono);font-size:9px;color:var(--gold);letter-spacing:.09em;white-space:nowrap}
+.mon-desc{font-size:10px;font-style:italic;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.flash{position:absolute;inset:0;background:radial-gradient(circle,var(--hitcol,rgba(255,255,255,.42)),transparent 58%);opacity:0;pointer-events:none;z-index:3}.flash.go{animation:fl .42s}
+.slam{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%) scale(.5);opacity:0;font-family:var(--mono);font-size:30px;font-weight:900;color:#e8d9b0;text-shadow:0 0 18px rgba(201,107,58,.8);pointer-events:none;z-index:6}.slam.go{animation:slam .55s ease-out}
+.result{position:absolute;left:0;right:0;top:22%;text-align:center;font-family:var(--display);font-size:34px;font-weight:900;letter-spacing:.12em;opacity:0;text-shadow:0 2px 10px #000,0 0 28px rgba(0,0,0,.85);pointer-events:none;z-index:6}.result.show{opacity:1}.result.win{color:#e8d9b0;text-shadow:0 2px 10px #000,0 0 24px rgba(201,107,58,.55)}.result.lose{color:var(--bad)}
+.result.meet{color:#cdbf9f;font-size:24px;letter-spacing:.2em;text-shadow:0 2px 10px #000,0 0 20px rgba(201,150,58,.35)}
+
+/* ---- Player damage: the cost is unmissable. ---- */
+.hurt-vignette{position:fixed;inset:0;z-index:38;pointer-events:none;opacity:0;background:radial-gradient(115% 100% at 50% 50%,transparent 52%,rgba(186,32,20,.55) 100%)}
+.hurt-vignette.go{animation:hurtPulse .85s ease-out}
+@keyframes hurtPulse{0%{opacity:0}16%{opacity:1}100%{opacity:0}}
+.heart-float{position:fixed;z-index:55;transform:translateX(-50%);font-family:var(--display);font-weight:900;font-size:24px;color:#ff5d4e;text-shadow:0 2px 8px #000,0 0 16px rgba(216,69,58,.65);pointer-events:none;animation:heartFloat 1.5s ease-out forwards}
+@keyframes heartFloat{0%{opacity:0;transform:translate(-50%,10px) scale(.7)}14%{opacity:1;transform:translate(-50%,0) scale(1.18)}28%{transform:translate(-50%,-4px) scale(1)}100%{opacity:0;transform:translate(-50%,-48px) scale(1)}}
+.cp-hearts.bleed,.plaque.hearts.bleed{animation:bleedPop .7s ease-out}
+@keyframes bleedPop{0%{transform:scale(1)}25%{transform:scale(1.45);color:#ff6a58;text-shadow:0 0 12px rgba(255,80,60,.85)}100%{transform:scale(1)}}
+
+/* ---- Gold payout: coins arc home to the ledger. ---- */
+.coin-fly{position:fixed;z-index:55;width:13px;height:13px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff3c4,#f2c84b 55%,#9a6f1f);box-shadow:0 0 10px rgba(242,200,75,.8),inset 0 -2px 3px rgba(90,60,10,.8);pointer-events:none}
+.cp-gold.gold-pop,.plaque.gold.gold-pop{animation:goldPop .4s ease-out}
+@keyframes goldPop{30%{transform:scale(1.35);color:#ffe9a8;text-shadow:0 0 12px rgba(242,200,75,.95)}}
+/* The counter lives on the fiction, not in a ledger row. */
+.score-overlay{position:absolute;left:0;right:0;bottom:44px;display:flex;align-items:baseline;justify-content:center;gap:10px;pointer-events:none;z-index:5}
+.total{font-family:var(--mono);font-size:54px;font-weight:900;line-height:1;color:#f7efdc;text-shadow:0 2px 6px #000,0 0 26px rgba(0,0,0,.9),0 0 14px rgba(239,230,208,.14)}
+.ovk{font-family:var(--mono);font-size:12px;color:var(--gold);text-shadow:0 1px 3px #000}.ovk.hint{color:var(--muted)}
+.hp-badge{position:absolute;right:8px;top:8px;min-width:34px;height:34px;padding:0 6px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:radial-gradient(circle at 35% 25%,#e35c4e,#7e1e19 70%);font-family:var(--mono);font-weight:900;font-size:14px;border:2px solid #230807;z-index:6;box-shadow:0 3px 10px rgba(0,0,0,.5)}
+/* The foe's rule, stamped where the foe lives. */
+.mod-badge{position:absolute;right:8px;top:48px;z-index:6;padding:4px 9px;font-family:var(--mono);font-size:11px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#e4a25a;background:linear-gradient(180deg,rgba(42,28,16,.95),rgba(20,12,8,.95));border:1px solid #5a3c20;border-radius:2px;box-shadow:0 2px 8px rgba(0,0,0,.6)}
+.mod-badge[hidden]{display:none}
+.hpbar{position:relative;height:13px;background:#060708;border-top:1px solid rgba(212,195,158,.12)}
+.hpghost{position:absolute;left:0;top:0;height:100%;width:100%;background:#c89c58;transition:width .7s cubic-bezier(.2,.8,.2,1) .28s}
+.hpfill{position:absolute;left:0;top:0;height:100%;width:100%;background:linear-gradient(90deg,#7c2721,#d45447);transition:width .4s cubic-bezier(.2,.8,.2,1)}
+.hplabel{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:9px;color:#fff4df;text-shadow:0 1px 2px #000;z-index:1}
+
+/* ---- One status line. Verdict, shortfall, tips, recap timeshare it. ---- */
+.readout{min-height:22px;text-align:center;font-size:12px;line-height:1.25;color:var(--muted);display:flex;align-items:center;justify-content:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.readout b{font-family:var(--mono);color:var(--text)}.readout .bad{color:var(--bad);font-weight:800}.readout .good{color:var(--good);font-weight:800}
+/* Gold is always coined, wherever it is counted. */
+.coin{display:inline-block;width:9px;height:9px;margin:0 3px 0 1px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#f4d98a,#9a7426 75%);box-shadow:0 1px 2px #000;vertical-align:baseline}
+
+/* ---- Combat log: what each die did, line by line. ---- */
+.combat-log{height:52px;overflow-y:auto;padding:4px 8px;border:1px solid #221d17;border-radius:2px;background:rgba(8,7,8,.7);font-family:var(--mono);font-size:10px;line-height:1.5;color:var(--muted);scrollbar-width:thin}
+.combat-log:empty::before{content:"combat log";color:#3c372e;letter-spacing:.12em;text-transform:uppercase}
+.log-line b{font-weight:900;margin-right:4px;color:var(--text)}
+.log-line.el-stone b{color:#aeb8c2}.log-line.el-venom b{color:#58c783}.log-line.el-fire b{color:#ff7b66}
+.log-line.el-wind b{color:#65d4c8}.log-line.el-storm b{color:#6db3f2}.log-line.el-crystal b{color:#db93f0}
+.log-line.el-coin b{color:#f0d06a}
+.log-line.verdict{font-weight:900;letter-spacing:.06em}
+.log-line.verdict.win{color:var(--good)}.log-line.verdict.lose{color:var(--bad)}
+
+/* ---- The lane: a recessed conduit; dice fire left to right. ---- */
+.tray{position:relative;min-height:70px;padding:4px 2px 6px}
+.tray::before{content:"";position:absolute;left:4px;right:4px;top:50%;height:4px;transform:translateY(-50%);background:linear-gradient(180deg,#04050,#0b0d12);border-radius:2px;box-shadow:inset 0 1px 2px #000,0 1px 0 rgba(220,210,185,.05)}
+.tray::after{content:"\203A \2003 \203A \2003 \203A \2003 \203A \2003 \203A";position:absolute;left:0;right:0;top:50%;transform:translateY(-52%);text-align:center;font-family:var(--mono);font-size:9px;letter-spacing:6px;color:rgba(220,210,185,.13);pointer-events:none;animation:chevdrift 3.2s linear infinite}
+.dice-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px}
+/* Tunnel-light cascade: the LIVE die sits in a lit square, and the arrow
+   to the next die FLASHES while the sequence walks the lane - dark-tunnel
+   runway lights, left to right. */
+.dice-grid .dice-slot + .dice-slot::before{content:"❯";position:absolute;left:-8px;top:50%;transform:translateY(-50%);font-size:11px;font-weight:900;color:#41382b;text-shadow:0 1px 2px #000;pointer-events:none;z-index:4;transition:color .15s,text-shadow .15s}
+.dice-slot.ignite{box-shadow:inset 0 0 0 2px rgba(255,228,160,.9),0 0 20px rgba(255,200,110,.45);z-index:2}
+.dice-grid .dice-slot.ignite + .dice-slot::before{animation:chevFlash .38s steps(2,start) infinite}
+.dice-grid .dice-slot.punch + .dice-slot::before{color:#ffd97a;text-shadow:0 0 9px rgba(255,180,70,.85),0 1px 2px #000}
+@keyframes chevFlash{0%{color:#ffe9a8;text-shadow:0 0 11px rgba(255,190,80,1),0 1px 2px #000}50%{color:#41382b;text-shadow:0 1px 2px #000}}
+.dice-slot{position:relative;min-width:0;height:66px;border:1px solid var(--line);border-radius:3px;background:linear-gradient(180deg,rgba(241,232,210,.05),rgba(5,6,8,.6));display:grid;place-items:center;touch-action:none;transition:transform .12s,border-color .12s,box-shadow .12s,filter .15s;z-index:1}
+.dice-slot.empty{border-style:dashed;color:var(--faint)}
+.dice-slot.movable{cursor:grab}.dice-slot.dragging{opacity:.5;transform:translateY(-4px);border-color:#8a7f68}.dice-slot.drop-target{border-color:#8a7f68;box-shadow:0 0 14px rgba(180,165,135,.2)}
+.dice-slot.sel{transform:translateY(-4px);border-color:#8a7f68;box-shadow:0 0 14px rgba(180,165,135,.18)}
+.dice-slot.rolled{border-color:rgba(141,184,232,.3)}.dice-slot.locked{border-color:rgba(228,90,80,.48);background:linear-gradient(180deg,rgba(228,90,80,.12),rgba(6,7,8,.68))}
+.dice-slot.hint{box-shadow:0 0 14px rgba(101,212,200,.22),inset 0 0 0 1px rgba(101,212,200,.18)}
+.slot-num{position:absolute;left:3px;top:2px;font-family:var(--mono);font-size:8px;color:var(--faint)}.slot-note{position:absolute;right:3px;top:2px;font-family:var(--mono);font-size:8px;color:#a8893f}
+.slot-lock{font-family:var(--mono);font-size:8px;letter-spacing:.08em;color:var(--faint);display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center}
+.slot-lock b{font-size:9px;color:#8a7f68}
+
+/* ---- Dice are physical: pipped faces, no captions. ---- */
+/* The die body wears its CLAN COLOR (tinted stone, not a gem inside). */
+.die{width:50px;height:50px;border-radius:4px;position:relative;background:radial-gradient(120% 100% at 34% 18%,color-mix(in srgb, var(--el,#5b554b) 42%, #4a443a),color-mix(in srgb, var(--el,#17130e) 20%, #14100b) 76%);box-shadow:inset 0 2px 1px rgba(255,255,255,.22),inset 0 -7px 10px rgba(0,0,0,.68),inset 0 0 0 1px rgba(0,0,0,.55),0 3px 0 #070607,0 8px 12px rgba(0,0,0,.48)}
+/* Species sigil: the die's portrait on the idle face. */
+.sglyph{width:24px;height:24px;color:#ead9b3;filter:drop-shadow(0 0 5px color-mix(in srgb, var(--el,#caa64e) 70%, transparent)) drop-shadow(0 1px 1px #000)}
+.die.tier-4 .sglyph{width:19px;height:19px}
+.bench-slot .sglyph{width:18px;height:18px}
+.die .v{position:absolute;inset:5px;display:grid;place-items:center}
+.pips{display:grid;width:100%;height:100%;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);place-items:center}
+.pip{width:8px;height:8px;border-radius:50%;background:radial-gradient(circle at 62% 70%,#fff7e3,var(--el,#e8dcbe) 70%);box-shadow:0 1px 1px rgba(0,0,0,.65),0 0 6px -1px var(--el,transparent)}
+.pip.c1{grid-area:1/1}.pip.c2{grid-area:1/2}.pip.c3{grid-area:1/3}
+.pip.c4{grid-area:2/1}.pip.c5{grid-area:2/2}.pip.c6{grid-area:2/3}
+.pip.c7{grid-area:3/1}.pip.c8{grid-area:3/2}.pip.c9{grid-area:3/3}
+.fv{position:absolute;left:3px;top:2px;font-family:var(--mono);font-size:9px;font-weight:900;color:var(--el,#f6eddb);text-shadow:0 1px 2px #000;line-height:1}
+.fuse{position:absolute;right:3px;top:2px;font-family:var(--mono);font-size:8px;font-weight:900;color:#ffb066;text-shadow:0 0 6px rgba(241,149,69,.8)}
+/* Tier tag: below the die on the slot bar, never inside the silhouette. */
+.dsz{position:absolute;left:50%;transform:translateX(-50%);bottom:2px;font-family:var(--mono);font-size:8px;font-weight:900;letter-spacing:.06em;color:rgba(246,237,219,.55);line-height:1;text-shadow:0 1px 2px #000;pointer-events:none;z-index:3}
+.sr-die{position:relative}
+.sr-die .dsz{bottom:-3px}
+.gem{width:16px;height:16px;transform:rotate(45deg);border-radius:3px;background:radial-gradient(circle at 35% 30%,#fff7e3,var(--el,#e8dcbe) 72%);box-shadow:0 0 10px -1px var(--el,transparent),0 1px 2px rgba(0,0,0,.7);opacity:.9}
+/* Tier silhouettes: THE DIE ITSELF is the polyhedral side profile - a d4
+   IS a triangle, not a triangle stuck on a cube. d6 keeps the square chip.
+   Clipped cards lose box-shadows, so depth + glow move to drop-shadow
+   (composable via --dsh for the ignite override below). The small gem
+   stays the clan jewel inside whatever the shape is. */
+.die.tier-4,.die.tier-8,.die.tier-10,.die.tier-12{border-radius:0;box-shadow:none;--dsh:drop-shadow(0 3px 2px rgba(0,0,0,.55)) drop-shadow(0 7px 9px rgba(0,0,0,.4));filter:var(--dsh)}
+.die.tier-4{clip-path:polygon(50% 2%, 98% 96%, 2% 96%)}
+.die.tier-8{clip-path:polygon(50% 1%, 99% 50%, 50% 99%, 1% 50%)}
+.die.tier-10{clip-path:polygon(50% 0%, 99% 44%, 50% 100%, 1% 44%)}
+.die.tier-12{clip-path:polygon(50% 1%, 99% 39%, 80% 99%, 20% 99%, 1% 39%)}
+/* Faces sit in each shape's safe area; pips shrink where the walls close in. */
+.die.tier-4 .v{inset:42% 24% 10%}
+.die.tier-8 .v{inset:26%}
+.die.tier-10 .v{inset:30% 28% 26%}
+.die.tier-12 .v{inset:26% 22% 12%}
+.die.tier-4 .pip{width:7px;height:7px}
+.die.tier-8 .pip,.die.tier-10 .pip,.die.tier-12 .pip{width:6px;height:6px}
+
+/* Combine payoff: the fused die flares - longer and louder the higher the
+   resulting tier (--fz set inline by arrange.js). */
+.dice-slot.fused .die{animation:fuseFlare var(--fz,.4s) cubic-bezier(.2,1.4,.4,1)}
+@keyframes fuseFlare{0%{transform:scale(.55);filter:brightness(2.5) saturate(1.7)}55%{transform:scale(1.2)}100%{transform:scale(1);filter:none}}
+.fuse-spark{position:absolute;left:50%;top:50%;width:4px;height:4px;margin:-2px;border-radius:50%;background:#ffd97a;box-shadow:0 0 8px rgba(255,180,70,.9);pointer-events:none;z-index:6;animation:fuseSpark var(--fz,.4s) ease-out forwards}
+@keyframes fuseSpark{0%{opacity:1;transform:rotate(var(--fa,0deg)) translateX(2px)}100%{opacity:0;transform:rotate(var(--fa,0deg)) translateX(var(--fd,26px))}}
+.face-text{font-family:var(--mono);font-size:11px;font-weight:900;color:var(--el,#f6eddb);letter-spacing:.04em}
+.die.el-stone{--el:#aeb8c2;background:radial-gradient(120% 100% at 34% 18%,#454f59,#13171c 76%)}
+.die.el-venom{--el:#58c783;background:radial-gradient(120% 100% at 34% 18%,#315640,#0d2117 76%)}
+.die.el-fire{--el:#ff7b66;background:radial-gradient(120% 100% at 34% 18%,#6b261c,#220b07 76%)}
+.die.el-wind{--el:#65d4c8;background:radial-gradient(120% 100% at 34% 18%,#255650,#0b201e 76%)}
+.die.el-storm{--el:#f0d06a;background:radial-gradient(120% 100% at 34% 18%,#5d4f22,#1d180a 76%)}
+.die.el-crystal{--el:#db93f0;background:radial-gradient(120% 100% at 34% 18%,#4e335b,#1a1020 76%)}
+.die.armed{box-shadow:inset 0 2px 1px rgba(255,255,255,.24),inset 0 -7px 10px rgba(0,0,0,.5),0 3px 0 #070607,0 0 16px rgba(241,149,69,.6)}
+.die.armed::after{content:"";position:absolute;inset:-5px;border-radius:7px;box-shadow:0 0 18px 2px rgba(241,149,69,.55);opacity:.4;pointer-events:none;animation:armedPulse 1.2s ease-in-out infinite}
+.die.show{animation:land .38s cubic-bezier(.2,1.4,.4,1)}
+.die.tumble{animation:tumble .34s linear infinite}
+.die.tumble .v{opacity:.7}
+.dice-slot .impact{position:absolute;inset:-2px;border-radius:4px;border:2px solid rgba(241,232,210,.55);opacity:0;pointer-events:none;animation:impact .4s ease-out}
+.dice-slot.locked .impact{border-color:rgba(228,90,80,.6)}
+.dice-slot.clank{animation:clank .32s}
+.dice-slot.punch{animation:punch .3s cubic-bezier(.2,1.5,.4,1)}
+.tray:not(.rolling) .dice-slot.hint .die{animation:breathe 1.8s ease-in-out infinite}
+.drag-ghost{position:fixed;z-index:80;pointer-events:none;transform:translate(-50%,-50%) scale(1.04);opacity:.95}
+
+/* ---- The activation sweep: the spark is the protagonist. ---- */
+/* (the traveling spark is gone - the lit slot + flashing chevron ARE the
+   sequence indicator now) */
+.face-num{font-family:var(--display);font-weight:900;font-size:21px;line-height:1;color:#f6eddb;text-shadow:0 2px 4px #000,0 0 9px color-mix(in srgb, var(--el,#fff) 40%, transparent)}
+.die.tier-4 .face-num{font-size:16px}
+.bench-slot .face-num{font-size:14px}
+.tray.cascading .dice-slot:not(.ignite):not(.empty){filter:brightness(.62)}
+.dice-slot.ignite{filter:brightness(1.12);border-color:rgba(242,200,75,.5);z-index:2}
+.dice-slot.ignite .die{box-shadow:inset 0 2px 1px rgba(255,255,255,.24),inset 0 -7px 10px rgba(0,0,0,.55),0 3px 0 #070607,0 0 16px var(--el,rgba(242,200,75,.5))}
+.dice-slot.ignite .die.tier-4,.dice-slot.ignite .die.tier-8,.dice-slot.ignite .die.tier-10,.dice-slot.ignite .die.tier-12{box-shadow:none;filter:var(--dsh) drop-shadow(0 0 10px var(--el,rgba(242,200,75,.6)))}
+
+/* ---- Drawer: the dice satchel at camp (D2-charm cells), Focus on halts. ---- */
+.drawer{min-height:54px}
+.bench-wrap{display:flex;align-items:center;gap:10px}.bench-wrap[hidden]{display:none}
+.satchel-label{font-family:var(--display);font-size:10px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:var(--faint);writing-mode:initial}
+.bench{display:flex;gap:5px}
+.bench-slot{width:52px;height:52px;border:1px solid #2e2820;border-radius:2px;background:linear-gradient(180deg,#0c0a09,#070605);box-shadow:inset 0 2px 5px rgba(0,0,0,.85),inset 0 0 0 1px rgba(0,0,0,.6),0 1px 0 rgba(220,200,170,.05)}
+.bench-slot.empty{border-style:solid}
+.bench-slot .slot-num{color:#3f382e}
+.bench-slot .die{width:38px;height:38px}
+.bench-slot .die .v{inset:4px}
+.bench-slot .pip{width:6px;height:6px}
+.focus-panel{border:1px solid rgba(101,212,200,.28);border-radius:3px;background:rgba(9,16,18,.8);padding:6px 9px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.focus-panel[hidden]{display:none}.focus-head{display:flex;flex-direction:column;gap:1px}.focus-head span:first-child{font-weight:800;font-size:13px}.focus-head span:last-child{font-family:var(--mono);font-size:10px;color:var(--muted)}
+.focus-actions{display:flex;gap:8px}.focus-actions button{min-width:58px;min-height:38px;border:1px solid rgba(241,232,210,.18);border-radius:3px;background:#15202a;color:var(--text);font-family:var(--mono);font-weight:900}
+
+/* ---- Character HUD: the player IS the bottom panel - roll verb on top of
+   the dice, resources and satchel below. ---- */
+.player-hud{border:1px solid #2c251d;border-radius:3px;background:linear-gradient(180deg,#13110f,#0b0a09);box-shadow:inset 0 1px 0 rgba(220,200,170,.06),0 10px 24px -14px #000;padding:8px;display:flex;flex-direction:column;gap:7px}
+.roll-row{display:flex;gap:7px;transition:opacity .3s}
+.roll-row .attack{flex:1}
+/* Between fights (altar / Peddler) the verb is gone - choosing IS the turn. */
+.roll-row.parked{opacity:0;pointer-events:none}
+.char-row{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:54px}
+.char-row .drawer{min-height:0;flex:1;display:flex;justify-content:flex-end}
+.char-stats{display:flex;gap:6px}
+.attack{min-height:52px;border:1px solid #0a0604;border-radius:2px;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation;text-transform:uppercase;font-weight:900;letter-spacing:.18em;font-family:var(--display);font-size:21px;background:linear-gradient(180deg,#b8453a,#7e261c 52%,#54160f);color:#ffe9c9;text-shadow:0 1px 0 rgba(0,0,0,.6);box-shadow:inset 0 1px 0 rgba(255,220,180,.3),inset 0 0 0 1px rgba(20,5,3,.8),inset 0 -12px 16px -10px #000,0 4px 0 #240705,0 10px 18px -8px #000;transition:filter .15s}
+.attack:hover{filter:brightness(1.15)}
+.attack.primed{animation:btnPrimed 1.3s ease-in-out infinite}
+.attack.spent{filter:saturate(.45) brightness(.55);transform:translateY(2px);box-shadow:inset 0 1px 0 rgba(255,220,180,.14),inset 0 -12px 16px -10px #000,0 2px 0 #240705}
+.attack:active{transform:translateY(3px)}.attack:disabled{filter:grayscale(.55) brightness(.55);cursor:wait}
+.attack:focus-visible,.wager-chip:focus-visible,.focus-actions button:focus-visible,.draft-card:focus-visible,.pass:focus-visible{outline:1px solid #8a7f68;outline-offset:2px}
+/* Wager rides the roll: a side-bet tab on the verb itself. */
+.wager-chip{min-width:76px;border:1px solid #2c251d;border-radius:2px;background:linear-gradient(180deg,#191512,#0d0b09);color:var(--muted);font-family:var(--mono);font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;box-shadow:inset 0 1px 0 rgba(220,200,170,.06)}
+.wager-chip:hover{color:#cdbf9f}
+.wager-chip[hidden]{visibility:hidden}
+.wager-chip.on{color:#ef5d4d;border-color:#5c241c;box-shadow:inset 0 0 12px rgba(193,75,60,.25),0 0 10px rgba(193,75,60,.2)}
+.wager-chip:disabled{opacity:.5;cursor:wait}
+
+/* ---- Overlays ---- */
+.draft{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:radial-gradient(120% 80% at 50% 30%,rgba(28,36,42,.76),rgba(3,4,5,.96) 70%);animation:draftFade .18s ease both}
+.draft[hidden]{display:none}.draft-inner{width:100%;max-width:480px;padding:22px 13px}.draft-title{text-align:center;font-family:var(--display);font-size:21px;font-weight:900;letter-spacing:.05em;color:#f5ecd8;margin-bottom:12px;text-shadow:0 2px 8px #000}
+.draft-cards{display:flex;flex-direction:column;gap:9px}.draft-card{display:flex;flex-direction:row;align-items:center;gap:13px;min-height:80px;text-align:left;cursor:pointer;padding:12px 13px;border:1px solid rgba(220,205,180,.14);border-radius:3px;background:linear-gradient(180deg,#17151a,#0d0c0f);color:var(--text);box-shadow:0 10px 22px -14px #000;animation:deal .42s cubic-bezier(.18,1.35,.4,1) both;animation-delay:calc(var(--i,0)*75ms)}
+.dc-die{position:relative;flex:0 0 auto}
+.dc-die .die{width:54px;height:54px}
+.dc-die .die .v{inset:6px}
+.dc-body{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.draft-title{animation:deal .32s cubic-bezier(.18,1.35,.4,1) both}
+.draft-card:active{transform:translateY(2px)}
+.draft-card.picked{animation:pickpulse .3s ease-out both;border-color:var(--gold);box-shadow:0 0 22px rgba(242,200,75,.32)}
+.draft-cards.picking .draft-card:not(.picked){opacity:.22;transition:opacity .25s}
+.draft-card:disabled{opacity:.48;cursor:not-allowed}.dc-top{display:flex;align-items:center;justify-content:space-between;gap:8px}.dc-tag{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}.dc-cost{font-family:var(--mono);font-size:12px;color:#e4bf63}
+.dc-name{font-family:Georgia,serif;font-size:17px;font-weight:800}.dc-desc{font-size:12px;color:#c9bea5;line-height:1.3}.pass{width:100%;min-height:46px;margin-top:10px;border:1px solid rgba(241,232,210,.16);border-radius:4px;background:#0f141b;color:var(--muted);text-transform:uppercase;font-family:var(--mono);font-weight:900}
+.sheet{position:fixed;inset:0;z-index:30;background:rgba(3,4,6,.62);display:flex;align-items:flex-end;justify-content:center;animation:draftFade .15s ease both}
+.sheet[hidden]{display:none}
+.sheet-card{width:100%;max-width:480px;background:#101218;border-top:1px solid rgba(220,210,185,.14);border-radius:4px 4px 0 0;padding:10px 16px calc(18px + env(safe-area-inset-bottom));animation:sheetUp .12s cubic-bezier(.2,.8,.3,1);touch-action:none}
+.sheet-grab{width:32px;height:3px;border-radius:2px;background:#3a3f49;margin:0 auto 12px}
+.sheet-die{position:relative;display:flex;justify-content:center;align-items:center;margin-bottom:10px;height:150px;background:url('../assets/die-card-frame.png') center/contain no-repeat}
+.sheet-die .die{width:62px;height:62px;margin-top:-14px}
+.sheet-die .die .v{inset:8px}
+.sheet-die .pip{width:10px;height:10px}
+.sheet-title{font-family:var(--display);font-size:19px;font-weight:900;letter-spacing:.03em;text-align:center;margin-bottom:6px}
+.sheet-desc{font-size:13px;color:#c9bea5;text-align:center;line-height:1.4;margin-bottom:10px}
+.sheet-meta{display:flex;flex-direction:column;gap:4px;font-family:var(--mono);font-size:11px;color:var(--muted);text-align:center}
+
+/* ---- Keyframes ---- */
+@keyframes shake{0%,100%{transform:translate(0,0)}25%{transform:translate(-4px,1px)}50%{transform:translate(4px,-1px)}75%{transform:translate(-2px,-1px)}}
+@keyframes fl{0%{opacity:0}25%{opacity:1}100%{opacity:0}}
+@keyframes slam{0%{opacity:0;transform:translate(-50%,-50%) scale(.5)}30%{opacity:1;transform:translate(-50%,-50%) scale(1.15)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.05)}}
+@keyframes land{0%{transform:translateY(-24px) rotate(-12deg) scale(.72)}70%{transform:translateY(2px) rotate(2deg) scale(1.05)}100%{transform:none}}
+@keyframes tumble{0%{transform:translateY(-3px) rotate(-7deg) scale(.95)}25%{transform:translateY(2px) rotate(5deg) scale(.92)}50%{transform:translateY(-4px) rotate(-3deg) scale(.97)}75%{transform:translateY(1px) rotate(7deg) scale(.93)}100%{transform:translateY(-3px) rotate(-7deg) scale(.95)}}
+@keyframes impact{0%{opacity:.9;transform:scale(.72)}100%{opacity:0;transform:scale(1.22)}}
+@keyframes clank{0%,100%{transform:none}30%{transform:translate(-3px,1px)}60%{transform:translate(3px,-1px)}}
+@keyframes armedPulse{0%,100%{opacity:.3}50%{opacity:.9}}
+@keyframes breathe{0%,100%{transform:none}50%{transform:translateY(-2px) scale(1.035)}}
+@keyframes punch{0%{transform:none}35%{transform:translateY(-7px) scale(1.06)}100%{transform:none}}
+@keyframes dmgfloat{0%{opacity:0;transform:translateY(6px) scale(.6)}18%{opacity:1;transform:translateY(-4px) scale(1.12)}100%{opacity:0;transform:translateY(-44px) scale(.94)}}
+@keyframes deal{from{opacity:0;transform:translateY(28px) scale(.95)}}
+@keyframes pickpulse{0%{transform:scale(1)}45%{transform:scale(1.04)}100%{transform:scale(1.01)}}
+@keyframes draftFade{from{opacity:0}to{opacity:1}}
+@keyframes sheetUp{from{transform:translateY(24px);opacity:.5}}
+
+/* ---- Diablo-style hover tooltip (hover-capable devices only). ---- */
+#tooltip{position:fixed;z-index:60;max-width:250px;padding:10px 13px 11px;background:rgba(8,7,9,.96);border:1px solid #3a3128;box-shadow:inset 0 0 0 1px #000,0 8px 24px rgba(0,0,0,.7);border-radius:2px;pointer-events:none;animation:draftFade .1s ease both}
+#tooltip[hidden]{display:none}
+.tip-title{font-family:var(--display);font-size:15px;font-weight:700;letter-spacing:.03em;text-align:center;margin-bottom:2px}
+.tip-title.el-stone{color:#aeb8c2}.tip-title.el-venom{color:#58c783}.tip-title.el-fire{color:#ff7b66}
+.tip-title.el-wind{color:#65d4c8}.tip-title.el-storm{color:#6db3f2}.tip-title.el-crystal{color:#db93f0}
+.tip-title.el-coin{color:#f0d06a}
+/* The die's faces, unfolded: mini pip-faces in the die's element color. */
+.face-strip{display:flex;gap:3px;justify-content:center;margin:4px 0 8px;flex-wrap:wrap}
+.mini-die{width:17px;height:17px;border-radius:2px;background:#161310;box-shadow:inset 0 1px 2px #000,0 0 0 1px #2c251d;display:grid;padding:2.5px}
+.mini-die .pip{width:3px;height:3px;box-shadow:none;background:var(--el,#d8cba8)}
+.die.el-stone,.mini-die.el-stone{--el:#aeb8c2}.die.el-venom,.mini-die.el-venom{--el:#58c783}
+.die.el-fire,.mini-die.el-fire{--el:#ff7b66}.die.el-wind,.mini-die.el-wind{--el:#65d4c8}
+.die.el-storm,.mini-die.el-storm{--el:#6db3f2}.die.el-crystal,.mini-die.el-crystal{--el:#db93f0}
+.die.el-coin,.mini-die.el-coin{--el:#f0d06a}
+/* tier tint on the size tag: common..legendary */
+.dsz.t4{color:#9aa1a8}.dsz.t6{color:#7ec98f}.dsz.t8{color:#6db3f2}.dsz.t10{color:#c08df0}.dsz.t12{color:#f0a04a}
+.evo-stars{color:#ffd97a;text-shadow:0 0 5px rgba(255,180,70,.7);font-size:8px;letter-spacing:1px}
+.tip-desc{font-size:12px;line-height:1.4;color:#c4b89e;text-align:center;margin-bottom:6px}
+/* The die's OWN ability - brighter than the clan blurb; this is the hero. */
+.tip-ability{font-size:12px;line-height:1.4;font-weight:700;color:#e8d9b0;text-align:center;margin-bottom:5px;text-shadow:0 0 8px rgba(228,170,90,.25)}
+/* One muted clan-status line on die hover (the roadmap lives on the chip). */
+.tip-clan{font-size:10.5px;line-height:1.4;text-align:center;font-style:italic;color:var(--muted);border-top:1px solid #221d17;padding-top:6px;margin-top:2px}
+.tip-clan.c-red{--cc:#ff7b66}.tip-clan.c-green{--cc:#58c783}.tip-clan.c-blue{--cc:#6db3f2}
+.tip-clan.c-grey{--cc:#aeb8c2}.tip-clan.c-gold{--cc:#f0d06a}
+/* Keywords read as KEYWORDS: bold, ONE theme accent (rainbow read as noise). */
+.kw{font-weight:900;letter-spacing:.03em;color:#ffd97a;text-shadow:0 0 7px rgba(255,190,80,.3)}
+.tip-legend{margin-top:7px;border-top:1px solid #221d17;padding-top:6px;font-size:10px;line-height:1.4;font-style:italic;color:var(--faint);text-align:center}
+.tip-orb{display:flex;align-items:center;justify-content:center;gap:7px;font-size:11px;line-height:1.35;color:#9bb8d0;font-style:italic}
+.tip-orb.empty{color:var(--faint)}
+/* ---- Clan card (TFT-style): all tiers listed, future ranks wait greyed. */
+.tip-count{font-family:var(--mono);font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;text-align:center;color:var(--cc,#cdbf9f);margin-bottom:5px}
+.tip-count.c-red,.clan-tiers.c-red{--cc:#ff7b66}.tip-count.c-green,.clan-tiers.c-green{--cc:#58c783}
+.tip-count.c-blue,.clan-tiers.c-blue{--cc:#6db3f2}.tip-count.c-grey,.clan-tiers.c-grey{--cc:#aeb8c2}
+.tip-count.c-gold,.clan-tiers.c-gold{--cc:#f0d06a}
+.clan-tiers{display:flex;flex-direction:column;gap:4px;margin-top:7px;border-top:1px solid #221d17;padding-top:8px}
+.clan-tier{display:flex;align-items:flex-start;gap:8px;padding:4px 6px;border-radius:2px;font-size:11px;line-height:1.35}
+.clan-tier .ct-th{flex:0 0 auto;width:18px;height:18px;display:grid;place-items:center;border-radius:2px;font-family:var(--mono);font-weight:900;font-size:10px;background:#13100c;box-shadow:inset 0 1px 2px #000,0 0 0 1px #2c251d;color:#57503f}
+.clan-tier .ct-fx{color:#5a5446}
+.clan-tier.on .ct-th{background:color-mix(in srgb, var(--cc,#cdbf9f) 22%, #13100c);box-shadow:inset 0 1px 2px #000,0 0 0 1px color-mix(in srgb, var(--cc,#cdbf9f) 55%, #2c251d);color:var(--cc,#cdbf9f)}
+.clan-tier.on .ct-fx{color:#c4b89e}
+.clan-tier.now{background:color-mix(in srgb, var(--cc,#cdbf9f) 9%, transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--cc,#cdbf9f) 35%, transparent)}
+.clan-tier.now .ct-th{box-shadow:inset 0 1px 2px #000,0 0 0 1px var(--cc,#cdbf9f),0 0 8px color-mix(in srgb, var(--cc,#cdbf9f) 60%, transparent)}
+.clan-tier.now .ct-fx{color:#e4dac0}
+.socket{width:13px;height:13px;border-radius:50%;background:#0a0908;box-shadow:inset 0 2px 4px #000,0 0 0 1px #3a3128;outline:1px dashed #45403a;outline-offset:2px;flex:0 0 auto}
+.socket.filled{background:radial-gradient(circle at 40% 32%,#cfe7ff,#4a7ba6 72%);box-shadow:0 0 8px rgba(130,175,220,.55),inset 0 1px 2px rgba(255,255,255,.45);outline:none}
+@keyframes chevdrift{0%{transform:translateY(-52%) translateX(-4px)}100%{transform:translateY(-52%) translateX(4px)}}
+@keyframes sparkPulse{0%,100%{transform:scale(1);opacity:.85}50%{transform:scale(1.35);opacity:1}}
+@keyframes restrike{0%{transform:scale(1)}40%{transform:scale(1.7)}100%{transform:scale(1)}}
+@keyframes btnPrimed{0%,100%{box-shadow:inset 0 1px 0 rgba(220,200,170,.14),inset 0 0 0 1px #0a0705,inset 0 -12px 18px -10px #000,0 4px 0 #0a0705,0 0 12px rgba(101,212,200,.25)}50%{box-shadow:inset 0 1px 0 rgba(220,200,170,.14),inset 0 0 0 1px #0a0705,inset 0 -12px 18px -10px #000,0 4px 0 #0a0705,0 0 26px rgba(101,212,200,.6)}}
+@keyframes bakedPrimed{0%,100%{filter:drop-shadow(0 0 8px rgba(101,212,200,.35))}50%{filter:drop-shadow(0 0 20px rgba(101,212,200,.8))}}
+@keyframes portraitHit{0%,100%{transform:none;filter:none}12%{transform:translate(-6px,3px);filter:brightness(1.5) sepia(.5) hue-rotate(-35deg) saturate(2)}34%{transform:translate(5px,-2px);filter:brightness(1.2) sepia(.3) hue-rotate(-25deg) saturate(1.6)}58%{transform:translate(-3px,1px)}}
+
+/* ---- Clan tracker: a chip per fielded clan with rank pips ---- */
+.clan-tracker{display:flex;justify-content:center;gap:6px;min-height:20px;flex-wrap:wrap}
+.clan-chip{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border:1px solid #2c251d;border-radius:2px;background:rgba(10,9,8,.88);font-family:var(--mono);font-size:9px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);cursor:help;transition:filter .12s}
+.clan-chip:hover{filter:brightness(1.35)}
+.clan-chip .pips{display:inline-flex;gap:2px}
+.clan-chip .pips i{width:5px;height:5px;border-radius:50%;background:#262019;box-shadow:inset 0 1px 1px #000}
+.clan-chip .pips i.on{background:var(--cc,#cdbf9f);box-shadow:0 0 5px var(--cc,#cdbf9f)}
+.clan-chip.ranked{color:var(--cc,#cdbf9f);border-color:color-mix(in srgb, var(--cc,#cdbf9f) 40%, #2c251d)}
+.clan-chip.c-red{--cc:#ff7b66}.clan-chip.c-green{--cc:#58c783}.clan-chip.c-blue{--cc:#6db3f2}
+.clan-chip.c-grey{--cc:#aeb8c2}.clan-chip.c-gold{--cc:#f0d06a}
+
+/* ---- Combine drag: identical dice fuse ---- */
+.dice-slot.combine-target{box-shadow:inset 0 0 0 2px rgba(255,217,122,.8),0 0 22px rgba(255,180,70,.5);position:relative;z-index:3}
+.dice-slot.combine-target::after{content:attr(data-combine);position:absolute;left:50%;top:-20px;transform:translateX(-50%);font-family:var(--mono);font-size:9px;font-weight:900;letter-spacing:.08em;color:#ffd97a;background:rgba(10,8,6,.92);border:1px solid #5a4124;border-radius:2px;padding:2px 6px;white-space:nowrap;z-index:9}
+.combine-badge{position:absolute;left:50%;bottom:-16px;transform:translateX(-50%);font-family:var(--mono);font-size:8px;font-weight:900;letter-spacing:.08em;color:#ffd97a;background:rgba(10,8,6,.92);border:1px solid #5a4124;border-radius:2px;padding:1px 5px;white-space:nowrap}
+
+/* altar reroll sits beside the skip line */
+.altar-reroll{position:absolute;left:30%;top:calc(100% + 8px);transform:translateX(-50%);padding:4px 10px;border:1px solid #2c251d;border-radius:2px;background:rgba(13,11,9,.9);color:#cdbf9f;font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;opacity:0;transition:opacity .3s .65s}
+.altar.risen .altar-reroll{opacity:1}
+.altar-reroll:hover{color:#ffd97a;border-color:#5a4124}
+.altar-reroll.spent-reroll{opacity:.35;pointer-events:none}
+.altar .altar-skip{left:62%}
+
+/* ---- THE PEDDLER'S SHOP: painted panel (assets/shop-panel.png, 5 baked
+   rows + desc box + LEAVE plate). Rows are hotspots positioned by the
+   asset's measured fractions; fonts: Cinzel names, mono prices, Georgia
+   desc - gold on black to match the engraving. ---- */
+.shop-panel{display:none;position:absolute;z-index:11;--spw:clamp(280px, 23vw, 360px);width:var(--spw);height:calc(var(--spw)*1.642);left:auto;right:clamp(10px, 4vw, 72px);bottom:calc(var(--feet, 28%) - 40px);background:url('../assets/shop-panel.png') center/100% 100% no-repeat;opacity:0;transform:translateX(14px);transition:opacity .3s ease-out,transform .3s ease-out}
+.shop-panel.show{display:block;opacity:1;transform:none}
+.shop-row{position:absolute;left:8%;width:84%;height:10.2%;top:calc(14.2% + var(--row)*11.55%);display:flex;align-items:center;gap:6px;padding:0 2%;border:none;background:none;cursor:pointer;text-align:left;transition:filter .12s}
+.shop-row:hover{filter:brightness(1.45) drop-shadow(0 0 6px rgba(255,200,110,.25))}
+.shop-row .sr-die{flex:0 0 auto;width:17%;display:flex;justify-content:center}
+.shop-row .sr-die .die{width:34px;height:34px}
+.shop-row .sr-die .die .v{inset:4px}
+.shop-row .sr-die .gem{width:13px;height:13px}
+.shop-row .sr-name{flex:1;font-family:var(--display);font-weight:700;font-size:calc(var(--spw)*0.038);color:#d7b66a;text-shadow:0 1px 2px #000;line-height:1.1;position:relative}
+.shop-row .sr-name .combine-badge{position:static;transform:none;display:inline-block;margin-left:6px;vertical-align:middle}
+.shop-row .sr-cost{flex:0 0 18%;text-align:center;font-family:var(--mono);font-weight:900;font-size:calc(var(--spw)*0.040);color:#e4bf63;text-shadow:0 1px 2px #000}
+.shop-row.broke .sr-cost{color:#a04438}
+.shop-row.broke{filter:saturate(.5) brightness(.8)}
+.shop-row.sold{pointer-events:none;justify-content:center}
+.shop-row .sr-sold{font-family:var(--mono);font-size:10px;letter-spacing:.3em;color:#4a4238}
+.shop-row.shop-reroll .sr-name{color:#9bb8d0;font-family:var(--mono);font-size:calc(var(--spw)*0.032);letter-spacing:.12em;text-transform:uppercase}
+.shop-row.shop-reroll.spent-reroll{opacity:.4;pointer-events:none}
+.shop-desc{position:absolute;left:10%;width:80%;top:74%;height:12%;display:flex;align-items:center;justify-content:center;text-align:center;font-family:Georgia,serif;font-style:italic;font-size:calc(var(--spw)*0.036);line-height:1.35;color:#b9a684;padding:0 3%}
+.shop-leave{position:absolute;left:27%;width:46%;top:90.6%;height:5.2%;border:none;background:none;cursor:pointer;transition:filter .12s}
+.shop-leave:hover{filter:brightness(1.6) drop-shadow(0 0 8px rgba(255,200,110,.4))}
+/* while shopping, combat chrome yields like the altar */
+.monster.shopping .score-overlay,.monster.shopping .hpbar,.monster.shopping .debuffs{opacity:0;pointer-events:none;transition:opacity .25s}
+
+/* ---- Steam-first landscape (>=900px): the corridor IS the screen and the
+   UI floats over it in the mockup's zones (log left, verb+lane bottom-center,
+   resources in the character HUD). Narrow viewports keep the column. ---- */
+.char-panel,.enemy-card,.view-dice{display:none}
+/* snd/fast chips parked for now - audio defaults on, fast lives in code */
+.togs{display:none}
+@media (min-width:900px){
+  .combat{max-width:none;padding:0;overflow:hidden;gap:0;--logw:clamp(150px, calc(21vw - 28px), 304px)}
+  .hud-top{position:absolute;top:10px;left:16px;right:16px;z-index:10;min-height:0}
+  .brand,.sub{text-shadow:0 1px 4px #000}
+  .monster{position:absolute;inset:0;margin:0;min-height:0;z-index:1}
+  .monster-stage{border:none}
+  /* hp bar rides UNDER the feet; NAME sits above the head, beneath the
+     damage counter. z6 > actor z2 so the foe never draws over its bar. */
+  .hpbar{position:absolute;left:50%;bottom:calc(var(--feet, 28%) - 26px);transform:translateX(-50%);width:min(300px,26vw);border:1px solid #1d1813;border-radius:2px;box-shadow:0 3px 12px rgba(0,0,0,.65);z-index:6}
+  .monster-plate{left:50%;right:auto;bottom:min(calc(var(--head, 62%) + 4px), calc(100% - 110px));transform:translateX(-50%);background:none;padding:0;flex-direction:column;align-items:center;gap:1px;text-align:center;z-index:6}
+  #roomname{font-size:21px;letter-spacing:.05em;text-shadow:0 2px 8px #000,0 0 22px rgba(0,0,0,.9);white-space:nowrap}
+  /* flavor copy lives in the hover dossier, not on the stage */
+  .mon-desc{display:none}
+  .mon-lvl{display:none}
+  /* damage counter crowns the stack - and only exists once damage lands */
+  .score-overlay{bottom:min(calc(var(--head, 62%) + 36px), calc(100% - 76px));transition:opacity .25s}
+  .score-overlay.idle{opacity:0}
+  .total{font-size:56px}
+  .hp-badge{top:50px;right:16px}
+  .mod-badge{top:94px;right:16px}
+  /* status row floats just above the hp bar, centered on the foe */
+  .debuffs{left:50%;top:auto;transform:translateX(-50%);bottom:calc(var(--feet, 28%) - 4px)}
+  /* readout rides just under the hp bar, under the sprite */
+  .readout{position:absolute;left:50%;bottom:calc(var(--feet, 28%) - 46px);transform:translateX(-50%);z-index:10;min-width:340px;max-width:60vw;min-height:0;text-shadow:0 1px 3px #000;font-size:11px;line-height:1.2}
+  /* The painted panel has baked rules: divider at .1913 of width, rows of
+     .0703 each (measured from the asset) - all geometry hangs off --logw
+     so log lines land BETWEEN the painted rules at any size. The log
+     anchors BOTTOM-RIGHT, mirroring the character sheet. */
+  .combat-log{position:absolute;left:auto;right:16px;bottom:24px;z-index:10;width:var(--logw);height:calc(var(--logw)*0.6992);background:url('../assets/combatlog-panel.png') center/100% 100% no-repeat;border:none;box-shadow:none;padding:calc(var(--logw)*0.1913) calc(var(--logw)*0.085) calc(var(--logw)*0.016);overflow-y:auto;scrollbar-width:none}
+  .combat-log::-webkit-scrollbar{display:none}
+  .combat-log:empty::before{content:""}
+  .combat-log .log-line{height:calc(var(--logw)*0.0703);line-height:calc(var(--logw)*0.0703);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:clamp(8px, calc(var(--logw)*0.0345), 11px)}
+
+  /* Clan rank chips crown the character sheet (old log slot): the build's
+     thresholds read at the same glance as gold and hearts. Bottom-anchored,
+     so extra rows grow UP the corridor wall, never into the portrait. */
+  .clan-tracker{position:absolute;left:16px;bottom:calc(24px + var(--logw)*0.6987 + 8px);z-index:10;width:var(--logw);justify-content:flex-start;min-height:0}
+
+  /* Character sheet (painted): portrait left, baked LVL/coin/heart right.
+     Value positions measured from the asset (panel 1082x756). */
+  .char-panel{display:block;position:absolute;left:16px;bottom:24px;z-index:10;width:var(--logw);height:calc(var(--logw)*0.6987);background:url('../assets/char-panel.png') center/100% 100% no-repeat}
+  .cp-portrait{position:absolute;left:4.8%;top:6.5%;width:51%;height:87%;object-fit:cover;z-index:1;border-radius:2px}
+  .cp-lvl{position:absolute;left:62%;top:21%;width:34%;text-align:center;z-index:2;font-family:var(--display);font-weight:900;color:#e8d9b0;font-size:calc(var(--logw)*0.1);text-shadow:0 1px 3px #000}
+  .cp-gold{position:absolute;left:72%;top:55.5%;width:23%;text-align:center;z-index:2;font-family:var(--mono);font-weight:900;color:#e4bf63;font-size:calc(var(--logw)*0.052);line-height:calc(var(--logw)*0.085)}
+  .cp-hearts{position:absolute;left:72%;top:76%;width:23%;text-align:center;z-index:2;font-family:var(--mono);font-weight:900;color:#d8453a;font-size:calc(var(--logw)*0.052);line-height:calc(var(--logw)*0.085)}
+  /* The foe's counter-attack lands ON the character sheet. */
+  .char-panel.hit{animation:portraitHit .55s cubic-bezier(.3,.1,.3,1)}
+
+  /* Enemy card (painted): the foe's dossier - it surfaces beside the
+     sprite when you study the thing (hover). Base rides the ground line. */
+  .enemy-card{display:block;position:absolute;left:calc(50% + 11vw);right:auto;top:auto;bottom:calc(var(--feet, 28%) - 30px);z-index:9;--ecw:clamp(180px, 15vw, 240px);width:var(--ecw);height:calc(var(--ecw)*1.6242);background:url('../assets/enemy-card.png') center/100% 100% no-repeat;opacity:0;pointer-events:none;transition:opacity .22s ease-out,transform .22s ease-out;transform:translateX(8px)}
+  .enemy-card.show{opacity:1;transform:none}
+  .ec-target{position:absolute;left:50%;top:15.4%;transform:translate(-50%,-50%);font-family:var(--mono);font-weight:900;font-size:calc(var(--ecw)*0.17);color:#ffe9c9;text-shadow:0 2px 6px #000}
+  .ec-name{position:absolute;left:10%;right:10%;top:26.5%;text-align:center;font-family:var(--display);font-weight:900;font-size:calc(var(--ecw)*0.062);color:#e8d9b0;text-shadow:0 1px 3px #000;line-height:1.15}
+  .ec-desc{position:absolute;left:12%;right:12%;top:33.5%;text-align:center;font-style:italic;font-size:calc(var(--ecw)*0.048);line-height:1.35;color:#b9ae96}
+  .ec-info{position:absolute;left:12%;right:12%;top:66%;display:flex;flex-direction:column;align-items:center;gap:calc(var(--ecw)*0.03)}
+  .ec-fight{font-family:var(--mono);font-size:calc(var(--ecw)*0.045);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+  .ec-mod{font-family:var(--mono);font-weight:900;font-size:calc(var(--ecw)*0.052);letter-spacing:.1em;text-transform:uppercase;color:#e4a25a}
+  /* the card carries target + rule now */
+  .hp-badge,.mod-badge{display:none}
+  .char-row .char-stats{display:none}
+
+  /* The painted ROLL plate floats bare on the corridor - no panel box. */
+  .attack.baked{background:url('../assets/roll-plate.png') center/contain no-repeat;border:none;box-shadow:none;min-height:80px}
+  .attack.baked span{opacity:0}
+  .attack.baked:hover{filter:brightness(1.18)}
+  .attack.baked:active{transform:translateY(2px)}
+  .attack.baked.primed{animation:bakedPrimed 1.3s ease-in-out infinite}
+  .attack.baked.spent{filter:saturate(.4) brightness(.5);transform:none;box-shadow:none}
+  /* The HUD sheds its box: a BIG floating ROLL plate, dice on a slim
+     shelf, satchel behind VIEW DICE. Wager + View Dice are ANCHORED as a
+     compact stack at the shelf's right shoulder - nothing floats bare. */
+  /* bottom rides up with the window so an overlapping taskbar can't eat it */
+  .player-hud{position:absolute;left:50%;bottom:max(16px, 3vh);transform:translateX(-50%);width:min(760px,58vw);z-index:10;background:none;border:none;box-shadow:none;padding:0;gap:5px;user-select:none}
+  .roll-row{position:relative;justify-content:center;align-items:center;gap:10px}
+  .roll-row .attack{flex:0 1 clamp(300px, 28vw, 460px)}
+  .wager-chip{position:absolute;right:0;bottom:42px;min-width:118px;height:30px;background:rgba(13,11,9,.92);border:1px solid #2c251d}
+  .view-dice{display:block;position:absolute;right:0;bottom:4px;width:118px;height:32px;border:none;cursor:pointer;background:url('../assets/view-dice-btn.png') center/contain no-repeat;filter:brightness(.92)}
+  .view-dice:hover{filter:brightness(1.15)}
+  .togs{display:none}
+  .tray{background:linear-gradient(180deg,rgba(15,13,11,.9),rgba(8,7,6,.9));border:1px solid #221c15;border-radius:3px;padding:5px 8px 7px;box-shadow:0 12px 26px -14px #000}
+  /* satchel popover: opens above the HUD from VIEW DICE */
+  .char-row{display:none;position:absolute;bottom:calc(100% + 10px);right:0;min-height:0;width:330px;background:rgba(10,9,8,.95);border:1px solid #2c251d;border-radius:3px;padding:8px 10px;box-shadow:0 16px 34px -12px #000;z-index:12}
+  .player-hud.satchel-open .char-row{display:flex}
+  /* Painted die sockets (cropped from the tray strip - 5 baked sockets
+     can't align with 6 slots, so one socket tiles per slot). */
+  .dice-slot{height:104px;background:url('../assets/die-socket.png') center/100% 100% no-repeat;border:none;border-radius:0}
+  .dice-slot.empty{border:none;background:url('../assets/die-socket.png') center/100% 100% no-repeat;opacity:.8}
+  .dice-slot.empty.locked{border:none;opacity:.55}
+  .dice-slot.rolled,.dice-slot.locked{border:none}
+  .dice-slot.locked:not(.empty){box-shadow:inset 0 0 22px rgba(228,90,80,.35)}
+  .bench-slot{background:url('../assets/die-socket.png') center/100% 100% no-repeat;border:none;width:50px;height:58px}
+}
+@media (max-height:768px) and (max-width:899px){
+  .combat{gap:4px}.monster{min-height:228px}.mon-desc{display:none}.readout{min-height:20px;font-size:11px}.combat-log{height:40px}.dice-slot{height:58px}.die{width:44px;height:44px}.pip{width:7px;height:7px}.char-row{min-height:46px}.bench-slot{width:46px;height:46px}.total{font-size:42px}.attack{min-height:46px;font-size:18px}
+}
+@media (min-width:720px) and (pointer:fine){
+  .combat{justify-content:center;gap:8px}.monster{min-height:380px}
+}
+@media (prefers-reduced-motion:reduce){
+  .monster.shake,.flash.go,.slam.go,.die.show,.draft,.die.tumble,.dice-slot .impact,.dice-slot.clank,.die.armed::after,.tray:not(.rolling) .dice-slot.hint .die,.dmg,.dice-slot.punch,.draft-card,.draft-title,.draft-card.picked,.spark.primed,.spark.restrike,.pip-rung.current,.attack.primed,.tray::after,.motes i{animation:none}.dice-slot,.attack{transition:none}.hpghost,.hpfill{transition:none}.spark{transition:none}
+  .dice-grid .dice-slot.ignite + .dice-slot::before{animation:none;color:#ffd97a}
+}

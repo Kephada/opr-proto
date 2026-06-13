@@ -1,0 +1,83 @@
+/* PATH 4 NESTED - mode-specific overrides on top of the base ui css.
+   Everything visual for sockets/bursts lives HERE; base css is untouched. */
+
+/* ---- Socket pips: tiny inner-die sigils + bound face, stacked on the
+   slot's left edge (the .dsz tier tag owns bottom-center). ---- */
+.socket-pips{position:absolute;left:2px;bottom:2px;display:flex;flex-direction:column;gap:2px;z-index:4;pointer-events:none}
+.socket-pip{display:flex;align-items:center;gap:1px;padding:1px 2px;border-radius:2px;background:rgba(6,7,10,.82);box-shadow:inset 0 0 0 1px rgba(220,210,185,.16)}
+.socket-pip .sglyph{width:9px;height:9px;filter:none;color:var(--spc,#ead9b3)}
+.socket-pip b{font-family:var(--mono);font-size:7px;font-weight:900;letter-spacing:0;color:rgba(246,237,219,.75);line-height:1}
+.socket-pip .sp-dot{width:6px;height:6px;border-radius:50%;background:var(--spc,#ead9b3)}
+.socket-pip.el-fire{--spc:#ff7b66}.socket-pip.el-venom{--spc:#58c783}
+.socket-pip.el-storm{--spc:#6db3f2}.socket-pip.el-stone{--spc:#aeb8c2}
+.socket-pip.el-coin{--spc:#e8c455}
+/* A pip whose burst the preview promised: it glows until the strike pays. */
+.socket-pip.lit{box-shadow:inset 0 0 0 1px var(--spc,#ffd97a),0 0 8px var(--spc,rgba(255,217,122,.8));animation:pipLit .7s ease-in-out infinite alternate}
+.socket-pip.lit b{color:#fff}
+@keyframes pipLit{from{filter:brightness(1)}to{filter:brightness(1.7)}}
+/* The shop rows aren't positioned in base css - anchor the pips. */
+.shop-row{position:relative}
+.sheet-die .socket-pips{left:50%;bottom:8px;transform:translateX(-50%);flex-direction:row;gap:4px}
+.sheet-die .socket-pip .sglyph{width:12px;height:12px}
+.sheet-die .socket-pip b{font-size:9px}
+
+/* ---- Drag ghost over a valid vessel: "SOCKET -> top face" / "-> face 1".
+   Mirrors .combine-target but in vessel blue, not fuse gold. ---- */
+.dice-slot.socket-target{box-shadow:inset 0 0 0 2px rgba(122,180,255,.8),0 0 22px rgba(90,150,230,.5);position:relative;z-index:3}
+.dice-slot.socket-target::after{content:attr(data-combine);position:absolute;left:50%;top:-20px;transform:translateX(-50%);font-family:var(--mono);font-size:9px;font-weight:900;letter-spacing:.08em;color:#9ecbff;background:rgba(6,8,12,.92);border:1px solid #24405a;border-radius:2px;padding:2px 6px;white-space:nowrap;z-index:9}
+
+/* ---- Socket-in payoff: the die climbs IN - a quick inward pinch + blue
+   sparks (combine keeps the big gold flare). ---- */
+.dice-slot.socketed .die{animation:socketIn .3s cubic-bezier(.3,1.5,.4,1)}
+@keyframes socketIn{0%{transform:scale(1)}45%{transform:scale(.82)}100%{transform:scale(1)}}
+.fuse-spark.socket-spark{background:#9ecbff;box-shadow:0 0 8px rgba(110,170,255,.9)}
+
+/* ---- Burst pop: the inner die pops out above the vessel slot, numeral
+   flickering live, then settles and slams its bonus into the total. ---- */
+.burst-die{position:fixed;z-index:60;transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center;gap:1px;padding:4px 7px 5px;border-radius:3px;background:radial-gradient(120% 100% at 34% 18%,#3a3328,#100d09 78%);box-shadow:inset 0 1px 1px rgba(255,255,255,.18),inset 0 0 0 1px rgba(0,0,0,.6),0 3px 8px rgba(0,0,0,.6),0 0 12px -2px var(--el,transparent);pointer-events:none;animation:burstUp .32s cubic-bezier(.2,1.3,.4,1) both}
+.burst-die .bd-name{font-family:var(--mono);font-size:7px;font-weight:900;font-style:normal;letter-spacing:.06em;color:rgba(246,237,219,.6);white-space:nowrap}
+.burst-die .bd-val{font-family:var(--mono);font-size:17px;font-weight:900;line-height:1;color:#f6eddb;text-shadow:0 0 8px var(--el,rgba(255,217,122,.8))}
+.burst-die.settled{animation:burstSlam .26s cubic-bezier(.3,1.6,.4,1) both}
+.burst-die.el-fire{--el:#ff7b66}.burst-die.el-venom{--el:#58c783}
+.burst-die.el-storm{--el:#6db3f2}.burst-die.el-stone{--el:#aeb8c2}
+.burst-die.el-coin{--el:#e8c455}
+@keyframes burstUp{0%{opacity:0;transform:translate(-50%,-40%) scale(.5)}100%{opacity:1;transform:translate(-50%,-100%) scale(1)}}
+@keyframes burstSlam{0%{transform:translate(-50%,-100%) scale(1.35)}60%{opacity:1}100%{opacity:0;transform:translate(-50%,-130%) scale(.9)}}
+
+/* ---- Inspector sheet: socket rows + eject. ---- */
+.socket-list{margin-top:10px;border-top:1px solid #221d17;padding-top:8px;display:flex;flex-direction:column;gap:6px}
+.socket-row{display:flex;align-items:center;gap:8px;font-size:11px;min-height:24px}
+.socket-row .srw-bind{font-family:var(--mono);font-size:9px;font-weight:900;letter-spacing:.06em;color:#9ecbff;flex:0 0 92px}
+.socket-row.empty .srw-bind{color:rgba(158,203,255,.4)}
+.socket-row .srw-hint{font-size:10px;font-style:italic;color:var(--faint,#5a5345)}
+.socket-row .srw-inner{font-weight:700;color:var(--spc,#ead9b3);flex:1}
+.socket-row .srw-inner.el-fire{--spc:#ff7b66}.socket-row .srw-inner.el-venom{--spc:#58c783}
+.socket-row .srw-inner.el-storm{--spc:#6db3f2}.socket-row .srw-inner.el-stone{--spc:#aeb8c2}
+.socket-row .srw-inner.el-coin{--spc:#e8c455}
+.eject-btn{font-family:var(--mono);font-size:9px;font-weight:900;letter-spacing:.08em;color:#e8d9b0;background:rgba(40,32,22,.9);border:1px solid #5a4124;border-radius:2px;padding:4px 8px;cursor:pointer}
+.eject-btn:hover:not(:disabled){border-color:#a8893f;color:#ffd97a}
+.eject-btn:disabled{opacity:.45;cursor:default}
+
+/* ---- Sheet inventory: equip chips on empty socket rows (tap-tap fallback
+   for the board drag; the only way to AIM the insurance socket). ---- */
+.socket-row.empty{flex-wrap:wrap;row-gap:4px}
+.sock-cand{font-family:var(--mono);font-size:9.5px;font-weight:900;letter-spacing:.05em;color:var(--spc,#ead9b3);background:rgba(14,16,22,.92);border:1px solid rgba(158,203,255,.32);border-radius:2px;padding:7px 9px;min-height:30px;cursor:pointer}
+.sock-cand:hover{border-color:#9ecbff;color:#fff;box-shadow:0 0 10px rgba(110,170,255,.35)}
+.sock-cand.el-fire{--spc:#ff7b66}.sock-cand.el-venom{--spc:#58c783}
+.sock-cand.el-storm{--spc:#6db3f2}.sock-cand.el-stone{--spc:#aeb8c2}
+.sock-cand.el-coin{--spc:#e8c455}
+.socket-combo{margin-top:8px;font-size:10px;line-height:1.45;text-align:center;color:rgba(158,203,255,.75);border-top:1px solid #221d17;padding-top:6px}
+
+/* ---- V2 combo read: the burst's charge ARRIVES on the next die. ---- */
+.charge-float{position:fixed;z-index:62;transform:translate(-50%,0);font-family:var(--mono);font-size:13px;font-weight:900;color:#ffe27a;text-shadow:0 0 10px rgba(255,217,122,.9),0 1px 2px #000;pointer-events:none;animation:chargeFloat .7s ease-out both}
+@keyframes chargeFloat{0%{opacity:0;transform:translate(-50%,8px) scale(.7)}25%{opacity:1;transform:translate(-50%,-6px) scale(1.15)}100%{opacity:0;transform:translate(-50%,-26px) scale(1)}}
+.dice-slot.charge-in .die{animation:chargeIn .42s cubic-bezier(.3,1.5,.4,1)}
+@keyframes chargeIn{0%{filter:brightness(1)}35%{filter:brightness(1.9) drop-shadow(0 0 10px rgba(255,217,122,.9));transform:scale(1.12)}100%{filter:brightness(1);transform:scale(1)}}
+
+/* ---- Hover tooltip: what the vessel holds. ---- */
+.tip-sockets{font-size:10.5px;line-height:1.4;text-align:center;color:#9ecbff;border-top:1px solid #221d17;padding-top:6px;margin-top:2px}
+
+@media (prefers-reduced-motion: reduce){
+  .burst-die,.burst-die.settled,.dice-slot.socketed .die,.socket-pip.lit,
+  .charge-float,.dice-slot.charge-in .die{animation:none}
+}

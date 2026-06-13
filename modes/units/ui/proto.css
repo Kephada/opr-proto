@@ -1,0 +1,69 @@
+/* PATH 2 — UNITS: dice are creatures; they bleed. Overrides ONLY - the base
+   ui css loads first and stays untouched. Scope: tray slots grow a portrait
+   row, KO greys, counter-hit flashes, the shop grows an item shelf. */
+
+/* ---- tray slots: room for the creature chrome above the die ------------- */
+.tray .dice-slot{height:92px;padding-top:20px}
+.tray .dice-slot.empty{padding-top:0}
+@media (min-width:900px){
+  .tray .dice-slot{height:104px;padding-top:18px}
+}
+
+/* ---- the unit frame: circular portrait + hp pips + item pip -------------- */
+.unit-frame{position:absolute;top:2px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:2px;z-index:4;pointer-events:none}
+.unit-frame.el-stone{--el:#aeb8c2}
+.unit-frame.el-venom{--el:#58c783}
+.unit-frame.el-fire{--el:#ff7b66}
+.unit-frame.el-storm{--el:#6db3f2}
+.unit-frame.el-coin{--el:#f0d06a}
+.unit-portrait{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;color:var(--el,#b8ab8d);background:radial-gradient(circle at 35% 28%,rgba(255,255,255,.12),rgba(5,6,8,.94) 72%);border:1px solid color-mix(in srgb,var(--el,#8a7f68) 60%,#0a0908);box-shadow:0 2px 5px rgba(0,0,0,.6),inset 0 1px 1px rgba(255,255,255,.08)}
+.unit-portrait .sglyph{width:19px;height:19px;display:block}
+.unit-portrait .up-gem{width:9px;height:9px;border-radius:50%;background:var(--el,#8a7f68)}
+.hp-pips{display:flex;gap:2px;width:44px;justify-content:center}
+.hp-pips i{flex:1 1 0;min-width:2px;max-width:9px;height:3px;border-radius:1px;background:#241d18;box-shadow:inset 0 0 0 1px rgba(0,0,0,.55)}
+.hp-pips i.on{background:linear-gradient(180deg,#84e08f,#3f9a52);box-shadow:0 0 4px rgba(110,220,130,.35)}
+
+/* item pip: the one equipment slot, worn at the portrait's shoulder */
+.item-pip,.it-pip{display:grid;place-items:center;border-radius:2px;font-family:var(--mono,monospace);font-weight:900;background:#191410;border:1px solid #6b5a35;color:#e8c455;box-shadow:0 1px 2px #000}
+.item-pip{width:12px;height:12px;font-size:8px;z-index:5}
+.unit-frame .item-pip{position:absolute;right:-2px;top:-2px;pointer-events:none}
+.bench-slot .item-pip{position:absolute;right:1px;top:1px}
+
+/* ---- KO: greyed in its slot, still occupying it -------------------------- */
+.unit-frame.ko .unit-portrait{filter:grayscale(1) brightness(.5)}
+.unit-frame.ko .hp-pips i.on{background:#3a332c;box-shadow:none}
+.tray .dice-slot.ko .die{filter:grayscale(.92) brightness(.5)}
+.tray .dice-slot.ko .die.tier-4,.tray .dice-slot.ko .die.tier-8,.tray .dice-slot.ko .die.tier-10,.tray .dice-slot.ko .die.tier-12{filter:var(--dsh) grayscale(.92) brightness(.5)}
+.tray .dice-slot.ko .dsz{opacity:.45}
+.tray .dice-slot.ko .face-text{color:#c96a5e;letter-spacing:.05em}
+
+/* ---- the foe's counter: aimed slot flash + falling -N -------------------- */
+.tray .dice-slot.unit-hit{animation:unitHit .55s ease-out}
+@keyframes unitHit{
+  0%{box-shadow:inset 0 0 0 3px rgba(228,90,80,.95),0 0 22px rgba(228,90,80,.7);transform:translateY(2px)}
+  60%{box-shadow:inset 0 0 0 2px rgba(228,90,80,.5),0 0 10px rgba(228,90,80,.3)}
+  100%{box-shadow:none;transform:none}
+}
+.unit-float{position:fixed;z-index:90;transform:translateX(-50%);font-family:var(--mono,monospace);font-weight:900;font-size:16px;color:#ff7263;text-shadow:0 1px 2px #000,0 0 10px rgba(228,90,80,.5);pointer-events:none;animation:unitFloat .9s ease-out forwards}
+@keyframes unitFloat{0%{opacity:0;margin-top:6px}18%{opacity:1;margin-top:0}100%{opacity:0;margin-top:-26px}}
+
+/* ---- enemy card: the attack plan line ------------------------------------ */
+.ec-attack{font-family:var(--mono,monospace);font-weight:900;font-size:calc(var(--ecw,200px)*0.048);letter-spacing:.06em;text-transform:uppercase;color:#e45a50;text-shadow:0 1px 2px #000}
+
+/* ---- the Peddler's item shelf (row 3) + click-to-equip ------------------- */
+.shop-row.item-shelf{display:flex;gap:3%;align-items:stretch;padding:1% 2%;pointer-events:auto}
+.item-tile{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:1px solid rgba(120,96,58,.55);border-radius:3px;background:linear-gradient(180deg,rgba(32,25,16,.88),rgba(12,9,6,.92));cursor:pointer;padding:2px 1px;transition:filter .12s,box-shadow .12s,border-color .12s}
+.item-tile:hover{filter:brightness(1.35)}
+.item-tile.broke{filter:saturate(.4) brightness(.7)}
+.item-tile.broke .it-cost{color:#a04438}
+.item-tile.arming{border-color:#ffd97a;box-shadow:0 0 12px rgba(255,217,122,.45),inset 0 0 0 1px rgba(255,217,122,.35)}
+.item-tile .it-pip{width:14px;height:14px;font-size:9px}
+.item-tile .it-name{font-family:var(--display,serif);font-weight:700;font-size:calc(var(--spw,320px)*0.028);color:#d7b66a;text-shadow:0 1px 2px #000;line-height:1;white-space:nowrap;overflow:hidden;max-width:100%}
+.item-tile .it-cost{font-family:var(--mono,monospace);font-weight:900;font-size:calc(var(--spw,320px)*0.030);color:#e4bf63;line-height:1}
+/* an armed item turns your dice into equip targets */
+body.equip-arming .tray .dice-slot:not(.empty),body.equip-arming .bench-slot:not(.empty){cursor:pointer;box-shadow:0 0 14px rgba(255,217,122,.4),inset 0 0 0 2px rgba(255,217,122,.5)}
+
+@media (prefers-reduced-motion:reduce){
+  .tray .dice-slot.unit-hit{animation:none;box-shadow:inset 0 0 0 2px rgba(228,90,80,.7)}
+  .unit-float{animation-duration:.01s}
+}

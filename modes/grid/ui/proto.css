@@ -1,0 +1,170 @@
+/* PATH 3 — THE GRID. Overrides ONLY: loads after the base css (combat/arena/
+   menu) and reshapes the tray into a 3x3 cell board. Dice are SHAPES spanning
+   their footprint; locked cells wear chains; drop ghosts paint the footprint
+   green/red; placement slams (fuseFlare reuse) and bounces (deny shake). */
+
+:root {
+  --gcell: 64px;
+  --ggap: 6px;
+  --gpad: 7px;
+}
+@media (max-width: 899px) {
+  :root { --gcell: 52px; --ggap: 5px; --gpad: 6px; }
+}
+
+/* ---- The board shell: kill the rail + chevron decor, become a square ---- */
+#tray.grid-board {
+  position: relative;
+  display: block;
+  min-height: 0;
+  padding: 0;
+  margin: 0 auto;
+  width: calc(var(--gcell) * 3 + var(--ggap) * 2 + var(--gpad) * 2);
+  height: calc(var(--gcell) * 3 + var(--ggap) * 2 + var(--gpad) * 2);
+  background: linear-gradient(180deg, rgba(15, 13, 11, .94), rgba(8, 7, 6, .94));
+  border: 1px solid #221c15;
+  border-radius: 6px;
+  box-shadow: inset 0 1px 0 rgba(220, 200, 170, .05), 0 12px 26px -14px #000;
+}
+#tray.grid-board::before,
+#tray.grid-board::after { display: none; }
+
+/* ---- Cells -------------------------------------------------------------- */
+.grid-board .grid-cell {
+  position: absolute;
+  width: var(--gcell);
+  height: var(--gcell);
+  left: calc(var(--gpad) + var(--gx) * (var(--gcell) + var(--ggap)));
+  top: calc(var(--gpad) + var(--gy) * (var(--gcell) + var(--ggap)));
+  box-sizing: border-box;
+  border: 1px dashed rgba(220, 210, 185, .16);
+  border-radius: 5px;
+  background: rgba(241, 232, 210, .03);
+  display: grid;
+  place-items: center;
+  pointer-events: none; /* geometric hit-test in board.js; dice sit above */
+  transition: background .12s, border-color .12s;
+}
+.grid-cell.locked-cell {
+  border-style: solid;
+  border-color: #14110d;
+  background: #07080b;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, .8);
+}
+.grid-cell .cell-lock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-size: 15px;
+  line-height: 1;
+  opacity: .55;
+  filter: grayscale(1);
+  text-align: center;
+}
+.grid-cell .cell-lock b {
+  font-family: var(--mono);
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: .1em;
+  color: #6a6052;
+  filter: none;
+}
+
+/* Drop ghost: the footprint glows green when legal, red when not. */
+.grid-cell.cell-ok {
+  background: rgba(88, 199, 131, .22);
+  border: 1px solid rgba(88, 199, 131, .7);
+  box-shadow: inset 0 0 12px rgba(88, 199, 131, .28);
+}
+.grid-cell.cell-bad {
+  background: rgba(216, 69, 58, .2);
+  border: 1px solid rgba(216, 69, 58, .65);
+  box-shadow: inset 0 0 12px rgba(216, 69, 58, .25);
+}
+.grid-cell.cell-deny { animation: cellDeny .45s ease-out; }
+@keyframes cellDeny {
+  0% { background: rgba(216, 69, 58, .5); border-color: rgba(216, 69, 58, .9); }
+  100% { background: rgba(241, 232, 210, .03); }
+}
+
+/* ---- Die slots: absolute, spanning their footprint ---------------------- */
+.grid-board .dice-slot {
+  position: absolute;
+  margin: 0;
+  width: calc(var(--gw, 1) * var(--gcell) + (var(--gw, 1) - 1) * var(--ggap));
+  height: calc(var(--gh, 1) * var(--gcell) + (var(--gh, 1) - 1) * var(--ggap));
+  left: calc(var(--gpad) + var(--gx, 0) * (var(--gcell) + var(--ggap)));
+  top: calc(var(--gpad) + var(--gy, 0) * (var(--gcell) + var(--ggap)));
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: linear-gradient(180deg, rgba(241, 232, 210, .06), rgba(5, 6, 8, .65));
+  z-index: 1;
+}
+/* The card stretches over its cells (leave air for the dsz tag below). */
+.grid-board .dice-slot .die {
+  width: calc(100% - 14px);
+  height: calc(100% - 18px);
+  margin-bottom: 4px;
+}
+.grid-board .dice-slot .die .v { inset: 6px; }
+.grid-board .dice-slot.rolled { border-color: rgba(141, 184, 232, .3); }
+.grid-board .dice-slot.locked {
+  border-color: rgba(228, 90, 80, .48);
+  background: linear-gradient(180deg, rgba(228, 90, 80, .12), rgba(6, 7, 8, .68));
+}
+
+/* The drag ghost is a detached clone: give it the cell metrics it lost. */
+.drag-ghost.grid-die {
+  width: calc(var(--gw, 1) * var(--gcell) + (var(--gw, 1) - 1) * var(--ggap));
+  height: calc(var(--gh, 1) * var(--gcell) + (var(--gh, 1) - 1) * var(--ggap));
+}
+
+/* ---- Juice: slam, jolt, deny -------------------------------------------- */
+.dice-slot.slammed .die { animation: fuseFlare .32s cubic-bezier(.2, 1.4, .4, 1); }
+.grid-board .dice-slot.jolt { animation: clank .3s; }
+.dice-slot.deny { animation: gridDeny .32s; }
+.dice-slot.drop-bad {
+  border-color: rgba(216, 69, 58, .65);
+  box-shadow: 0 0 14px rgba(216, 69, 58, .25);
+}
+@keyframes gridDeny {
+  0%, 100% { transform: none; }
+  25% { transform: translateX(-5px); }
+  60% { transform: translateX(4px); }
+}
+
+/* ---- Footprint badge: tiny cell squares on offers/tooltip --------------- */
+.fp-badge {
+  display: inline-grid;
+  grid-template-columns: repeat(var(--fw, 1), 7px);
+  grid-auto-rows: 7px;
+  gap: 1px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.fp-badge i {
+  background: rgba(232, 196, 85, .25);
+  border: 1px solid rgba(232, 196, 85, .65);
+  border-radius: 1px;
+}
+.altar-die .fp-badge {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  margin: 0;
+  padding: 3px;
+  background: rgba(10, 8, 6, .92);
+  border: 1px solid #5a4124;
+  border-radius: 2px;
+  z-index: 2;
+}
+.tip-title .fp-badge { margin-left: 8px; }
+
+/* ---- Motion off ---------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .dice-slot.slammed .die,
+  .grid-board .dice-slot.jolt,
+  .dice-slot.deny,
+  .grid-cell.cell-deny { animation: none; }
+}
